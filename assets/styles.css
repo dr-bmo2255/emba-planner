@@ -322,3 +322,6 @@ button { font: inherit; color: inherit; }
 }
 .ask-ref:hover { background: color-mix(in srgb, var(--c) 26%, #fff); }
 .ask-ref.done { color: var(--done); text-decoration: line-through; background: #f1f3f6; }
+.dd-sum-strong { color: var(--yale-blue); font-weight: 700; }
+.dd-radio .dd-label small { display: block; margin-top: 1px; }
+.dd-radio input { accent-color: var(--yale-blue); }

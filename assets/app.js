@@ -122,7 +122,7 @@
     req: ["required", "optional"],
     mode: ["individual", "group", "unspecified"],
     courses: coursesWithItems.slice(),
-    upcoming: true,
+    range: "cycle",
     hideDone: false,
     month: todayIso.slice(0, 7)
   };
@@ -131,12 +131,25 @@
   // A course added after the user last visited should show up, not stay hidden.
   const seen = new Set(load(STORE_PREFS, {}).knownCourses || []);
   coursesWithItems.forEach((id) => { if (!seen.has(id)) prefs.courses.add(id); });
+  if (!["cycle", "upcoming", "all"].includes(prefs.range)) prefs.range = defaults.range;
   let query = "";
+
+  // The current class cycle: from the Sunday after the last class weekend through the
+  // Saturday that ends the next one (about two weeks).
+  function currentCycle() {
+    const wk = D.program.classWeekends;
+    const i = wk.findIndex((w) => w[1] >= todayIso);
+    if (i < 0) return null;
+    const start = i ? iso(new Date(parseDate(wk[i - 1][1]).getTime() + 864e5)) : todayIso;
+    return { start, end: wk[i][1], weekend: wk[i] };
+  }
+  const cycle = currentCycle();
+  const cycleLabel = cycle ? fmtDow(cycle.start) + " " + fmtDate(cycle.start) + " – " + fmtDow(cycle.end) + " " + fmtDate(cycle.end) : "";
 
   function persist() {
     save(STORE_PREFS, {
       view: prefs.view, kinds: [...prefs.kinds], req: [...prefs.req], mode: [...prefs.mode],
-      courses: [...prefs.courses], upcoming: prefs.upcoming, hideDone: prefs.hideDone, month: prefs.month,
+      courses: [...prefs.courses], range: prefs.range, hideDone: prefs.hideDone, month: prefs.month,
       knownCourses: coursesWithItems
     });
   }
@@ -153,7 +166,10 @@
     if (HAS_REQ.has(it.kind) && !prefs.req.has(it.required === false ? "optional" : "required")) return false;
     if (HAS_MODE.has(it.kind) && !prefs.mode.has(it.mode || "unspecified")) return false;
     if (prefs.hideDone && done.has(it.id)) return false;
-    if (!opts.ignoreUpcoming && prefs.upcoming && it.date && (it.endDate || it.date) < todayIso) return false;
+    if (!opts.ignoreRange) {
+      if (prefs.range === "upcoming" && it.date && (it.endDate || it.date) < todayIso) return false;
+      if (prefs.range === "cycle" && cycle && (!it.date || it.date > cycle.end || (it.endDate || it.date) < cycle.start)) return false;
+    }
     if (query) {
       const hay = [it.title, it.notes, courseInfo(it.course).code, courseInfo(it.course).name, (it.topics || []).join(" "),
         it.speaker && it.speaker.title, it.instructor, facultyNames(facultyFor(it.course))].join(" ").toLowerCase();
@@ -204,6 +220,22 @@
     req: () => [{ value: "required", label: "Required" }, { value: "optional", label: "Optional" }],
     mode: () => [{ value: "individual", label: "Individual" }, { value: "group", label: "Group" }, { value: "unspecified", label: "Not yet specified" }]
   };
+  const RANGES = [
+    { value: "cycle", label: "Through next class weekend", short: cycle ? fmtDate(cycle.start) + " – " + fmtDate(cycle.end) : "Next weekend", sub: cycleLabel },
+    { value: "upcoming", label: "All upcoming", short: "All upcoming", sub: "Today onward" },
+    { value: "all", label: "Full year", short: "Full year", sub: "Including past items" }
+  ];
+  function rangeMenu() {
+    const cur = RANGES.find((r) => r.value === prefs.range) || RANGES[0];
+    const open = openDD === "range";
+    return '<div class="dd dd-range' + (open ? " open" : "") + '" data-dd="range">' +
+      '<button type="button" class="dd-btn" aria-haspopup="true" aria-expanded="' + open + '">' +
+      '<span class="dd-name">Dates</span><span class="dd-sum dd-sum-strong">' + esc(cur.short) + '</span><span class="dd-caret">▾</span></button>' +
+      '<div class="dd-menu"' + (open ? "" : " hidden") + ">" +
+      RANGES.map((r) => '<label class="dd-opt dd-radio"><input type="radio" name="range" data-group="range" value="' + r.value + '"' +
+        (r.value === prefs.range ? " checked" : "") + '><span class="dd-label">' + esc(r.label) +
+        (r.sub ? "<small>" + esc(r.sub) + "</small>" : "") + "</span></label>").join("") + "</div></div>";
+  }
   function renderFilters() {
     $("#filters").innerHTML = '<div class="fbar">' +
       dropdown("courses", "Courses", groupOptions.courses()) +
@@ -211,13 +243,14 @@
       dropdown("req", "Required / optional", groupOptions.req()) +
       dropdown("mode", "Group / individual", groupOptions.mode()) +
       '<span class="fbar-sep"></span>' +
-      '<label class="fopt"><input type="checkbox" data-group="opt" value="upcoming"' + (prefs.upcoming ? " checked" : "") + "> Upcoming only</label>" +
+      rangeMenu() +
       '<label class="fopt"><input type="checkbox" data-group="opt" value="hideDone"' + (prefs.hideDone ? " checked" : "") + "> Hide completed</label></div>";
   }
   $("#filters").addEventListener("change", (e) => {
     const t = e.target;
     if (!t.dataset.group) return;
     if (t.dataset.group === "opt") prefs[t.value] = t.checked;
+    else if (t.dataset.group === "range") { prefs.range = t.value; openDD = null; }
     else if (t.checked) prefs[t.dataset.group].add(t.value); else prefs[t.dataset.group].delete(t.value);
     renderFilters(); render();
   });
@@ -241,7 +274,7 @@
   });
   $("#showAll").addEventListener("click", () => {
     prefs.kinds = new Set(defaults.kinds); prefs.req = new Set(defaults.req); prefs.mode = new Set(defaults.mode);
-    prefs.courses = new Set(defaults.courses); prefs.hideDone = false; prefs.upcoming = false;
+    prefs.courses = new Set(defaults.courses); prefs.hideDone = false; prefs.range = "all";
     query = ""; $("#search").value = "";
     renderFilters(); render();
   });
@@ -346,7 +379,9 @@
   }
   function emptyMsg() {
     if (!prefs.kinds.size) return '<div class="empty"><b>Output cleared.</b><br>Turn on a category above, or press <b>Show all</b>.</div>';
-    return '<div class="empty">Nothing matches these filters' + (prefs.upcoming ? " in the upcoming schedule. Turn off <b>Upcoming only</b> to see past items" : "") + ".</div>";
+    const where = { cycle: " between now and the end of the next class weekend", upcoming: " in the upcoming schedule" }[prefs.range] || "";
+    return '<div class="empty">Nothing matches these filters' + where + "." +
+      (prefs.range !== "all" ? " Choose a wider range under <b>Dates</b>." : "") + "</div>";
   }
 
   // ---------- CALENDAR VIEW ----------
@@ -665,7 +700,7 @@
     let html;
     if (prefs.view === "calendar") {
       // The calendar always shows the full month; "Upcoming only" applies to the list views.
-      html = renderCalendar(items.filter((it) => matches(it, { ignoreUpcoming: true })));
+      html = renderCalendar(items.filter((it) => matches(it, { ignoreRange: true })));
     } else {
       const list = items.filter((it) => matches(it));
       html = prefs.view === "course" ? renderByCourse(list) : renderList(list);
