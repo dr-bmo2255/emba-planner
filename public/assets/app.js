@@ -928,7 +928,9 @@
     if ((v = d("data-member-del"))) {
       const [tid, uid] = v.split(":");
       const who = findTeam(tid).members.find((m) => String(m.id) === uid);
-      if (confirm("Remove " + who.name + " from " + findTeam(tid).name + "?")) await act(() => api("DELETE", "/api/teams/" + tid + "/members/" + uid), "Removed " + who.name + ".");
+      if (confirm("Remove " + who.name + " from " + findTeam(tid).name + "?\n\nThe team gets a new invite link so the old one can't be used to rejoin. Current members aren't affected.")) {
+        await act(() => api("DELETE", "/api/teams/" + tid + "/members/" + uid), "Removed " + who.name + ". The team has a new invite link.");
+      }
       return;
     }
     if ((v = d("data-team-leave"))) {

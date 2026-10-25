@@ -76,6 +76,9 @@ export async function removeMember(env, user, teamId, memberId) {
   const leaving = Number(memberId) === user.id;
   if (!leaving && role === "member") throw new HttpError(403, "Only the team's owner can remove members.");
   await env.DB.prepare("DELETE FROM team_members WHERE team_id = ? AND user_id = ?").bind(teamId, Number(memberId)).run();
+  // Someone was removed (not leaving on their own): replace the invite link so the old one can't be
+  // used to rejoin. Current members are unaffected; an invite link that was turned off stays off.
+  if (!leaving) await env.DB.prepare("UPDATE teams SET invite_code = ? WHERE id = ? AND invite_code IS NOT NULL").bind(randomToken(12), teamId).run();
   // Keep an owner: promote the longest-standing member, or delete an empty team.
   const left = await env.DB.prepare("SELECT user_id, role FROM team_members WHERE team_id = ? ORDER BY joined_at").bind(teamId).all();
   if (!left.results.length) await env.DB.prepare("DELETE FROM teams WHERE id = ?").bind(teamId).run();
