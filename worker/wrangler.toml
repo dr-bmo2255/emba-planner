@@ -1,5 +1,5 @@
 name = "emba-planner-proxy"
-main = "anthropic-proxy.js"
+main = "src/index.js"
 compatibility_date = "2026-09-01"
 
 [vars]
@@ -7,3 +7,12 @@ compatibility_date = "2026-09-01"
 ALLOWED_ORIGINS = "https://dr-bmo2255.github.io,http://localhost:8028"
 MODEL = "claude-opus-5-5"
 MAX_TOKENS = "16000"
+EXTRACT_MODEL = "claude-opus-5-5"
+GITHUB_REPO = "dr-bmo2255/emba-planner"
+GITHUB_BRANCH = "main"
+SITE_URL = "https://dr-bmo2255.github.io/emba-planner/"
+
+# Files sent from the iPhone share sheet ("Add to EMBA Planner" shortcut), kept 7 days.
+[[kv_namespaces]]
+binding = "INBOX"
+id = "c615acaa478c44b2bff59cc2d2406ae2"

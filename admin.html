@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0f1641">
+  <link rel="icon" type="image/png" href="assets/icons/favicon-64.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <title>Manage Courses</title>
+  <meta name="description" content="Maintainer page for the EMBA Planner: add, update, remove, or undo course data.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css?v=2026-10-25l">
+  <link rel="stylesheet" href="assets/admin.css?v=2026-10-25l">
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="brand">
+        <span class="brand-yale">Yale</span>
+        <span class="brand-som">School of Management</span>
+      </div>
+      <div class="brand-sub">
+        <span class="brand-program">Manage courses</span>
+        <span class="brand-cohort">EMBA Planner · maintainer only · <a href="./" style="color:inherit">back to planner</a></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap admin">
+    <section class="card" id="lockCard">
+      <h2>Unlock</h2>
+      <p class="muted">Only the planner's maintainer can change course data. Everyone else sees the planner read-only.</p>
+      <form id="lockForm" class="row-form">
+        <input type="password" id="passcode" placeholder="Admin passcode" autocomplete="current-password" aria-label="Admin passcode">
+        <button class="btn" type="submit">Unlock</button>
+      </form>
+      <p id="lockMsg" class="msg"></p>
+    </section>
+
+    <div id="adminBody" hidden>
+      <section class="card">
+        <h2>Add or update a course</h2>
+        <p class="muted">Drop a syllabus PDF, or paste the address of a public course web page. Claude reads it, and you review everything before it goes live.</p>
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a syllabus PDF">
+          <input type="file" id="file" accept="application/pdf,.pdf" hidden>
+          <div class="drop-icon" aria-hidden="true">📄</div>
+          <div><b>Drop a syllabus PDF here</b> or <u>choose a file</u></div>
+          <div class="muted" id="fileName"></div>
+        </div>
+        <div class="or"><span>or</span></div>
+        <input type="url" id="url" class="wide" placeholder="https://… course web page (must be public, not Canvas)" aria-label="Course page URL">
+        <div class="grid2">
+          <label>Course
+            <select id="courseHint"><option value="">Detect automatically</option></select>
+          </label>
+          <label>Notes for Claude <span class="muted">(optional)</span>
+            <input type="text" id="notes" placeholder="e.g. This page replaces the tracker entries for HW1–HW6">
+          </label>
+        </div>
+        <button class="btn btn-lg" id="extractBtn">Read with Claude</button>
+        <div class="progress" id="progress" hidden><span class="spinner"></span><span id="progressText"></span></div>
+        <p id="extractMsg" class="msg"></p>
+      </section>
+
+      <section class="card" id="previewCard" hidden></section>
+
+      <section class="card">
+        <details class="setup">
+          <summary><h2>📱 Send syllabi straight from your iPhone</h2></summary>
+          <p class="muted">Once set up, any PDF in Canvas, Mail, or Files can go to the planner from the <b>Share</b> button. You do this once, in the iPhone's <b>Shortcuts</b> app:</p>
+          <ol class="steps">
+            <li>Open <b>Shortcuts</b> → tap <b>+</b> → name it <b>Add to EMBA Planner</b>.</li>
+            <li>Tap the <b>ⓘ</b> (Details) button → turn on <b>Show in Share Sheet</b> → under "Receive", choose <b>PDFs</b> only.</li>
+            <li>Add the action <b>Get Contents of URL</b>. Set the URL to:<br><code id="shortcutUrl"></code><br>
+              Tap <b>Show More</b>: Method <b>POST</b>; Headers: add <code>x-admin-passcode</code> = <i>your passcode</i>, and <code>x-filename</code> = the <b>Shortcut Input → Name</b> variable; Request Body <b>File</b> = <b>Shortcut Input</b>.</li>
+            <li>Add the action <b>Open URLs</b>. It uses the result of the previous step automatically.</li>
+            <li>Done. To use it: in Canvas, open the syllabus → <b>Share</b> (or "Open in…") → <b>Add to EMBA Planner</b>. This page opens with the file loaded.</li>
+          </ol>
+          <p class="muted">Files sent this way are stored privately for 7 days, then deleted automatically. Your passcode lives only inside the shortcut on your phone.</p>
+        </details>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Courses in the planner</h2><button class="btn btn-ghost btn-sm" id="refreshBtn">Refresh</button></div>
+        <div id="courseList"></div>
+      </section>
+
+      <section class="card">
+        <h2>Recent changes</h2>
+        <p class="muted">Every change is saved in the project's history. <b>Undo</b> puts that course's data back to how it was right before the change.</p>
+        <div id="history"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="foot">Changes go live on the planner about a minute after you publish (GitHub Pages rebuild).</footer>
+
+  <script src="assets/data.js?v=2026-10-25l"></script>
+  <script type="module" src="assets/admin.js?v=2026-10-25l"></script>
+</body>
+</html>

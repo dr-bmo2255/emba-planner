@@ -11,7 +11,8 @@ It's the combined view Canvas doesn't give us.
 - Readings and cases link straight to the Canvas file or case site
 - **Checkboxes** gray out finished items; uncheck any time. Saved in *your* browser only.
 - Category / course / requirement / group switches, plus **Show all** and **Clear output**
-- **Export .ics** of whatever is currently shown, for Google/Apple/Outlook calendars
+- **📅 Add to calendar**: one-tap subscribe in Apple, Google, or Outlook Calendar (a live feed that updates when a syllabus is published), or download a one-time .ics
+- **📱 Install app**: add it to your phone or iPad home screen; works offline; layouts tuned for laptop, tablet, and phone
 - **Ask the Planner** chat (bottom-right): built-in answers for "what's due this week", "readings for
   Nov 7", "who teaches Operations", "how is Competitor graded" (no key needed); optional **Claude**
   for any question in your own words, through a shared proxy (`worker/`) or your own API key
@@ -19,15 +20,20 @@ It's the combined view Canvas doesn't give us.
 
 > Unofficial, student-built. Always confirm dates on Canvas. Items marked **⚠ verify** need a human check.
 
-## Updating (maintainers)
+## Updating (maintainer only)
 
-New syllabus? In Claude Code, from this folder:
+Open `admin.html` on the live site (not linked from the planner), enter the passcode, then drop a
+syllabus PDF or paste a public course page. Claude extracts it, you review, and Publish commits it.
+Every change can be undone there. On iPhone, the "Add to EMBA Planner" Shortcut sends a PDF from
+Canvas's Share button straight to that page (setup steps are on the page).
+
+Or, in Claude Code from this folder:
 
 ```
 /add-syllabus syllabi/<the-syllabus>.pdf
 ```
 
-The skill extracts the text and links, writes `data/courses/MGTxxx.js`, registers it in `index.html`,
+The skill extracts the text and links, writes `data/courses/MGTxxx.json`, registers it in `data/courses/index.json`,
 and lists anything it couldn't confirm. New master schedule from the EMBA office:
 
 ```
@@ -36,8 +42,8 @@ and lists anything it couldn't confirm. New master schedule from the EMBA office
 
 ## Turn on Claude for the whole cohort (optional)
 
-Deploy the small proxy in `worker/` (see `worker/README.md`), then set
-`EMBA.program.assistant.endpoint` in `data/program.js` to its URL.
+Deploy the Worker in `worker/` (see `worker/README.md`), then set `assistant.endpoint` in
+`data/program.json` to its URL. The same Worker serves the calendar feed and the Manage courses actions.
 
 ## Publish on GitHub Pages
 

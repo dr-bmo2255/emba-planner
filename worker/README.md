@@ -15,7 +15,7 @@ npx wrangler deploy
 ```
 
 Wrangler prints a URL like `https://emba-planner-proxy.<you>.workers.dev`. Put it in
-`data/program.js`:
+`data/program.json`:
 
 ```js
 assistant: { endpoint: "https://emba-planner-proxy.<you>.workers.dev", model: "claude-opus-5-5" }
@@ -29,3 +29,17 @@ assistant: { endpoint: "https://emba-planner-proxy.<you>.workers.dev", model: "c
 - Only your Pages origin can call it, the model and `max_tokens` are forced, and tools are
   stripped. An origin check doesn't stop a determined person from calling it from a script,
   so set a monthly spend limit in the Anthropic Console (Settings → Limits).
+
+## Manage courses, calendar feed, iPhone inbox
+
+The same Worker also serves:
+- `GET /calendar.ics`: the public live calendar feed (optional filters `courses`, `types`, `req`, `mode`).
+- `/admin/*`: the maintainer-only Manage courses actions. Every request needs the `x-admin-passcode`
+  header. Publish, remove, and undo are commits to the GitHub repo.
+
+Two more secrets, set once:
+
+```bash
+npx wrangler secret put GITHUB_TOKEN     # fine-grained token: this repo only, Contents read/write
+npx wrangler secret put ADMIN_PASSCODE   # a long passphrase only the maintainer knows
+```

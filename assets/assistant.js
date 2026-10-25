@@ -8,6 +8,7 @@ const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.133.0/+esm";
 const KEY_STORE = "emba28.anthropicKey";
 const MODE_STORE = "emba28.chatMode";
 
+if (!window.EMBA_APP) await new Promise((r) => window.addEventListener("emba:ready", r, { once: true }));
 const A = window.EMBA_APP;
 const CFG = Object.assign({ endpoint: "", model: "claude-opus-5-5" }, (window.EMBA.program || {}).assistant);
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];

@@ -2,13 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1641">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="EMBA Planner">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="assets/icons/favicon-64.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <title>EMBA Planner</title>
   <meta name="description" content="Combined assignments, readings, and class schedule for the Yale SOM EMBA Class of 2028.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=2026-10-25i">
+  <link rel="stylesheet" href="assets/styles.css?v=2026-10-25l">
 </head>
 <body>
   <header class="masthead">
@@ -37,7 +45,8 @@
       <div class="toolbar-actions">
         <button class="btn" id="showAll">Show all</button>
         <button class="btn btn-ghost" id="clearAll">Clear output</button>
-        <button class="btn btn-ghost" id="exportIcs" title="Download the items currently shown as a calendar file (.ics)">Export .ics</button>
+        <button class="btn btn-ghost" id="addToCal" title="Subscribe in Apple, Google, or Outlook Calendar, or download a file">📅 Add to calendar</button>
+        <button class="btn btn-ghost" id="installApp" hidden title="Save the planner to your phone's home screen">📱 Install app</button>
       </div>
     </section>
 
@@ -61,17 +70,11 @@
     </div>
   </div>
 
-  <!-- DATA: program + master schedule first, then one file per course. /add-syllabus adds lines here. -->
-  <script src="data/program.js?v=2026-10-25i"></script>
-  <script src="data/sessions.js?v=2026-10-25i"></script>
-  <script src="data/courses/MGT407.js?v=2026-10-25i"></script>
-  <script src="data/courses/MGT409.js?v=2026-10-25i"></script>
-  <script src="data/courses/MGT410.js?v=2026-10-25i"></script>
-  <script src="data/courses/MGT411.js?v=2026-10-25i"></script>
-  <script src="data/courses/MGT422.js?v=2026-10-25i"></script>
-  <script src="data/courses/MGT699.js?v=2026-10-25i"></script>
-  <!-- /DATA -->
-  <script src="assets/app.js?v=2026-10-25i"></script>
-  <script type="module" src="assets/assistant.js?v=2026-10-25i"></script>
+  <script>
+    if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  </script>
+  <script src="assets/data.js?v=2026-10-25l"></script>
+  <script src="assets/app.js?v=2026-10-25l"></script>
+  <script type="module" src="assets/assistant.js?v=2026-10-25l"></script>
 </body>
 </html>

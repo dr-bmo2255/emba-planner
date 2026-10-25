@@ -1,0 +1,68 @@
+{
+  "id": "MGT409",
+  "code": "MGT 409",
+  "name": "AI Foundations for Managers",
+  "term": "Fall 2026",
+  "canvas": null,
+  "grading": [],
+  "notes": "Syllabus not loaded yet. Only the deliverables from the cohort tracker are listed.",
+  "items": [
+    {
+      "id": "409-hw4",
+      "type": "assignment",
+      "title": "HW4",
+      "date": "2026-10-24",
+      "time": "00:00",
+      "points": 6.67,
+      "mode": null,
+      "required": true,
+      "verify": "Entered from the cohort tracker; MGT 409 syllabus not loaded yet."
+    },
+    {
+      "id": "409-hw5",
+      "type": "assignment",
+      "title": "HW5: MCP Servers",
+      "date": "2026-11-06",
+      "time": "08:00",
+      "points": 6.67,
+      "mode": null,
+      "required": true,
+      "verify": "Entered from the cohort tracker; MGT 409 syllabus not loaded yet. The tracker lists this as both Fri 11/6 8:00 AM and Sat 11/7 12:00 AM."
+    },
+    {
+      "id": "409-hw6",
+      "type": "assignment",
+      "title": "HW6: Security & Economics",
+      "date": "2026-11-06",
+      "time": "08:00",
+      "points": 6.67,
+      "mode": null,
+      "required": false,
+      "notes": "Optional assignment.",
+      "verify": "Entered from the cohort tracker; MGT 409 syllabus not loaded yet."
+    },
+    {
+      "id": "409-copilot",
+      "type": "assignment",
+      "title": "Business AI Co-pilot",
+      "date": "2026-11-20",
+      "time": "23:59",
+      "points": 6.67,
+      "mode": null,
+      "required": true,
+      "verify": "Entered from the cohort tracker; MGT 409 syllabus not loaded yet."
+    }
+  ],
+  "source": {
+    "type": "syllabus",
+    "note": "Initial import from the Fall 2026 syllabus (or cohort tracker for MGT409)",
+    "updated": "2026-10-25"
+  },
+  "faculty": [
+    {
+      "name": "Tauhid Zaman",
+      "title": "Lecturer in Management and Special Advisor for AI Initiatives",
+      "url": "https://som.yale.edu/faculty-research/faculty-directory/tauhid-zaman"
+    }
+  ]
+}

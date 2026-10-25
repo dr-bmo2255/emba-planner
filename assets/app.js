@@ -1,7 +1,15 @@
-(function () {
+(async function () {
   "use strict";
 
-  const D = window.EMBA;
+  // All data comes from data/*.json (see assets/data.js).
+  let D;
+  try {
+    D = await window.loadPlannerData();
+  } catch (e) {
+    console.error("[planner] couldn't load data", e);
+    document.getElementById("view").innerHTML = '<div class="empty">Couldn\'t load the schedule. Check your connection and reload.</div>';
+    return;
+  }
   const REG = D.program.courseRegistry;
   const STORE_DONE = "emba28.done";
   const STORE_PREFS = "emba28.prefs";
@@ -64,7 +72,7 @@
 
   // The master schedule lists last names ("Baron/Adler/Kim"); expand them from courseRegistry.faculty.
   function facultyFor(courseId, lastNames) {
-    const fac = (REG[courseId] && REG[courseId].faculty) || [];
+    const fac = (courseById[courseId] && courseById[courseId].faculty) || (REG[courseId] && REG[courseId].faculty) || [];
     if (!lastNames) return fac;
     return lastNames.split("/").map((ln) => {
       ln = ln.trim();
@@ -438,9 +446,14 @@
       '<div class="cal-legend"><span><i style="background:var(--weekend);border:1px solid #c6d9ea"></i>Class weekend</span>' +
       '<span><i style="background:var(--yale-blue)"></i>Deliverable due</span>' +
       '<span><i style="background:#e6edf5;border-left:3px solid var(--yale-blue)"></i>Class / reading</span>' +
-      "<span>Hover for a preview · click for details</span></div></div>";
-    h += '<div class="cal">' + DOW.map((d) => '<div class="cal-dow">' + d + "</div>").join("");
+      (phone ? "" : "<span>Hover for a preview · click for details</span>") + "</div></div>";
+    h += '<div class="cal' + (phone ? " cal-phone" : "") + '">' + DOW.map((d) => '<div class="cal-dow">' + (phone ? d[0] : d) + "</div>").join("");
     const MAX = 5;
+    // Phones: each day shows colored dots; tapping a day lists its entries under the grid.
+    const inMonth = (di) => di.slice(0, 7) === prefs.month;
+    if (phone && (!calDay || !inMonth(calDay))) {
+      calDay = inMonth(todayIso) ? todayIso : ([...byDay.keys()].filter(inMonth).sort()[0] || prefs.month + "-01");
+    }
     for (let i = 0; i < 42; i++) {
       const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
       if (i === 35 && d.getMonth() !== m - 1) break;
@@ -450,6 +463,17 @@
       if (weekendDays.has(di)) cls.push("wknd");
       if (di === todayIso) cls.push("today");
       const entries = byDay.get(di) || [];
+      if (phone) {
+        if (di === calDay) cls.push("sel");
+        const dots = entries.slice(0, 4).map((e) => {
+          const c = courseInfo(e.course || e.item.course);
+          const due = !e.bundle && KINDS[e.item.kind].due;
+          return '<i class="pdot' + (due ? " due" : "") + (entryDone(e) ? " done" : "") + '" style="--c:' + c.color + '"></i>';
+        }).join("");
+        h += '<button class="' + cls.join(" ") + '" data-calday="' + di + '" aria-label="' + esc(fmtLongDate(di) + ", " + entries.length + " entries") + '">' +
+          '<span class="dnum"><b>' + d.getDate() + '</b></span><span class="pdots">' + dots + (entries.length > 4 ? '<i class="pmore">+</i>' : "") + "</span></button>";
+        continue;
+      }
       h += '<div class="' + cls.join(" ") + '"><div class="dnum"><b>' + d.getDate() + "</b></div>";
       const shown = entries.length > MAX ? entries.slice(0, MAX - 1) : entries;
       shown.forEach((e) => {
@@ -468,9 +492,30 @@
       }
       h += "</div>";
     }
-    return h + "</div>";
+    h += "</div>";
+    if (phone) {
+      const entries = byDay.get(calDay) || [];
+      h += '<section class="agenda"><h3>' + esc(fmtLongDate(calDay)) + (weekendDays.has(calDay) ? ' <span class="tag">Class weekend</span>' : "") + "</h3>";
+      h += entries.length ? entries.map((e) => {
+        const ref = "c" + calIndex.size;
+        calIndex.set(ref, e);
+        const c = courseInfo(e.course || e.item.course);
+        const isDue = !e.bundle && KINDS[e.item.kind].due;
+        const when = e.bundle ? (e.time ? "before " + fmtTime(e.time) : "") : (e.item.time ? (e.item.endTime ? fmtTime(e.item.time) + "–" + fmtTime(e.item.endTime) : fmtTime(e.item.time)) : "");
+        const sub = e.bundle ? e.items.map((i) => i.title).join(" · ") : [isDue && e.item.points != null ? fmtPts(e.item.points) : "", isDue && e.item.mode ? e.item.mode : ""].filter(Boolean).join(" · ");
+        return '<button class="agenda-item' + (isDue ? " due" : "") + (entryDone(e) ? " done" : "") + '" style="--c:' + c.color + '" data-chip="' + ref + '">' +
+          '<span class="ag-time">' + esc(when) + '</span><span class="ag-main"><b>' + esc(courseNum(e.course || e.item.course) + " · " + (e.bundle ? (e.items.length > 1 ? e.items.length + " readings / cases" : e.items[0].title) : e.item.title)) + "</b>" +
+          (sub ? "<small>" + esc(sub) + "</small>" : "") + "</span></button>";
+      }).join("") : '<p class="muted-p">Nothing scheduled.</p>';
+      h += "</section>";
+    }
+    return h;
   }
   let calIndex = new Map();
+  let calDay = null;
+  const phoneQuery = window.matchMedia("(max-width: 600px)");
+  let phone = phoneQuery.matches;
+  phoneQuery.addEventListener("change", (e) => { phone = e.matches; if (prefs.view === "calendar") render(); });
 
   // ---------- BY-COURSE VIEW ----------
   function renderByCourse(list) {
@@ -565,7 +610,8 @@
     modalCtx = ctx;
     hideTip();
     let html, color;
-    if (ctx.item) { html = detailHtml(ctx.item); color = courseInfo(ctx.item.course).color; }
+    if (ctx.html) { html = ctx.html; color = ctx.color; }
+    else if (ctx.item) { html = detailHtml(ctx.item); color = courseInfo(ctx.item.course).color; }
     else if (ctx.bundle) { html = bundleHtml(ctx); color = courseInfo(ctx.course).color; }
     else { html = dayHtml(ctx); color = null; }
     $("#modal-body").innerHTML = html;
@@ -635,49 +681,75 @@
       else { const [y, mo] = prefs.month.split("-").map(Number); const d = new Date(y, mo - 1 + n, 1); prefs.month = iso(d).slice(0, 7); }
       render(); return;
     }
+    const dayBtn = t.closest("[data-calday]");
+    if (dayBtn) { calDay = dayBtn.dataset.calday; render(); return; }
     const chip = t.closest("[data-chip]");
     if (chip && calIndex.has(chip.dataset.chip)) { openModal(calIndex.get(chip.dataset.chip)); return; }
     const op = t.closest("[data-open]");
     if (op && itemById[op.dataset.open]) openModal({ item: itemById[op.dataset.open] });
   });
 
-  // ---------- ICS export ----------
-  function icsEscape(s) { return String(s || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/[,;]/g, (c) => "\\" + c); }
-  function exportIcs() {
-    const list = items.filter((it) => matches(it) && it.date);
-    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
-    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//EMBA C28 Planner//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:EMBA Planner"];
-    list.forEach((it) => {
-      const c = courseInfo(it.course);
-      const d = it.date.replace(/-/g, "");
-      lines.push("BEGIN:VEVENT", "UID:" + it.id + "@emba28-planner", "DTSTAMP:" + stamp);
-      if (it.time) {
-        const st = it.time.replace(":", "") + "00";
-        const en = (it.endTime || it.time).replace(":", "") + "00";
-        lines.push("DTSTART;TZID=America/New_York:" + d + "T" + st, "DTEND;TZID=America/New_York:" + d + "T" + en);
-      } else {
-        const end = iso(new Date(parseDate(it.endDate || it.date).getTime() + 864e5)).replace(/-/g, "");
-        lines.push("DTSTART;VALUE=DATE:" + d, "DTEND;VALUE=DATE:" + end);
-      }
-      const prefix = KINDS[it.kind].due ? "DUE: " : (it.kind === "reading" || it.kind === "case") ? "Read: " : "";
-      lines.push("SUMMARY:" + icsEscape(courseNum(it.course) + " " + prefix + it.title));
-      const desc = [c.code + " " + c.name, KINDS[it.kind].due && it.points != null ? "Points: " + fmtPts(it.points) : "",
-        it.mode ? "Work: " + it.mode : "", it.notes || "", (it.links || []).map((l) => l.label + ": " + l.url).join("\n")].filter(Boolean).join("\n");
-      lines.push("DESCRIPTION:" + icsEscape(desc));
-      if (it.location) lines.push("LOCATION:" + icsEscape(it.location));
-      lines.push("END:VEVENT");
-    });
-    lines.push("END:VCALENDAR");
-    const blob = new Blob([lines.join("\r\n")], { type: "text/calendar" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "emba-planner.ics";
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  // ---------- Add to calendar (live subscription via the Worker's /calendar.ics) ----------
+  const FEED = ((D.program.assistant && D.program.assistant.endpoint) || "").replace(/\/$/, "") + "/calendar.ics";
+  function feedQuery(scope) {
+    if (scope !== "mine") return "";
+    const q = new URLSearchParams();
+    const all = (k, list) => prefs[k].size === list.length;
+    if (!all("courses", coursesWithItems)) q.set("courses", [...prefs.courses].join(","));
+    if (!all("kinds", Object.keys(KINDS))) q.set("types", [...prefs.kinds].join(","));
+    if (prefs.req.size < 2) q.set("req", [...prefs.req].join(","));
+    if (prefs.mode.size < 3) q.set("mode", [...prefs.mode].join(","));
+    const qs = q.toString();
+    return qs ? "?" + qs : "";
   }
-  $("#exportIcs").addEventListener("click", exportIcs);
+  function calendarHtml(scope) {
+    const https = FEED + feedQuery(scope);
+    const webcal = https.replace(/^https:/, "webcal:");
+    const name = encodeURIComponent("EMBA C28 Planner");
+    const filtered = feedQuery("mine") !== "";
+    return '<div class="cal-modal"><h3 id="modal-title">Add to your calendar</h3>' +
+      '<p class="muted-p">Subscribe once and new syllabi, date changes, and readings show up in your calendar automatically. Deadlines appear as "DUE" events with their points and links.</p>' +
+      '<div class="seg" role="radiogroup" aria-label="What to include">' +
+      '<label><input type="radio" name="calscope" value="all"' + (scope !== "mine" ? " checked" : "") + '> Everything</label>' +
+      '<label><input type="radio" name="calscope" value="mine"' + (scope === "mine" ? " checked" : "") + (filtered ? "" : " disabled") + "> Only what I'm showing" + (filtered ? "" : " (no filters set)") + "</label></div>" +
+      '<div class="cal-btns">' +
+      '<a class="cal-btn" href="' + esc(webcal) + '"><b>Apple Calendar</b><span>iPhone, iPad, Mac</span></a>' +
+      '<a class="cal-btn" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/render?cid=' + encodeURIComponent(webcal) + '"><b>Google Calendar</b><span>Opens Google, then click Add</span></a>' +
+      '<a class="cal-btn" target="_blank" rel="noopener" href="https://outlook.live.com/calendar/0/addfromweb?url=' + encodeURIComponent(https) + "&name=" + name + '"><b>Outlook.com</b><span>Personal Outlook</span></a>' +
+      '<a class="cal-btn" target="_blank" rel="noopener" href="https://outlook.office.com/calendar/0/addfromweb?url=' + encodeURIComponent(https) + "&name=" + name + '"><b>Outlook (work/school)</b><span>Microsoft 365</span></a>' +
+      "</div>" +
+      '<div class="cal-copy"><input readonly value="' + esc(https) + '" aria-label="Calendar feed address"><button class="btn btn-ghost" data-copy-feed>Copy link</button></div>' +
+      '<p class="muted-p">Calendar apps check for updates on their own schedule: Apple every few hours, Google roughly once or twice a day. Your checkmarks stay in this planner and aren\'t sent to the calendar.</p>' +
+      '<hr><p class="muted-p"><b>Just want a one-time copy?</b> <a href="' + esc(https + (https.includes("?") ? "&" : "?") + "download=1") + '">Download an .ics file</a>. It won\'t update.</p></div>';
+  }
+  $("#addToCal").addEventListener("click", () => openModal({ html: calendarHtml("all"), color: "var(--yale-blue)" }));
+  $("#modal").addEventListener("change", (e) => {
+    if (e.target.name === "calscope") openModal({ html: calendarHtml(e.target.value), color: "var(--yale-blue)" });
+  });
+  $("#modal").addEventListener("click", (e) => {
+    if (!e.target.matches("[data-copy-feed]")) return;
+    const input = e.target.previousElementSibling;
+    input.select();
+    (navigator.clipboard ? navigator.clipboard.writeText(input.value) : Promise.reject()).catch(() => document.execCommand("copy"));
+    e.target.textContent = "Copied ✓";
+  });
 
-  // ---------- summary ----------
+  // ---------- Install as an app ----------
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let installPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; $("#installApp").hidden = standalone; });
+  if (isIOS && !standalone) $("#installApp").hidden = false;
+  $("#installApp").addEventListener("click", async () => {
+    if (installPrompt) { installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; $("#installApp").hidden = true; return; }
+    openModal({ color: "var(--yale-blue)", html: '<h3 id="modal-title">Put the planner on your home screen</h3>' +
+      '<ol class="install-steps"><li>Open this page in <b>Safari</b> (not inside another app).</li>' +
+      '<li>Tap the <b>Share</b> button <span class="ios-share" aria-hidden="true">⬆︎</span> at the bottom (or top right on iPad).</li>' +
+      '<li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li></ol>' +
+      '<p class="muted-p">It opens full-screen like an app, keeps your checkmarks, and still works with a weak connection.</p>' });
+  });
+
+
   function renderSummary() {
     const in14 = iso(new Date(Date.now() + 14 * 864e5));
     const dueSoon = items.filter((i) => KINDS[i.kind].due && i.date && i.date >= todayIso && i.date <= in14 && !done.has(i.id) && prefs.courses.has(i.course));
@@ -720,7 +792,9 @@
     openItem: (id) => { if (itemById[id]) openModal({ item: itemById[id] }); }
   };
 
-  $("#updated").textContent = "Schedule data last updated " + fmtDate(D.program.updated) + ", " + D.program.updated.slice(0, 4) + ".";
+  const lastUpdate = [D.program.updated, D.coursesUpdated].filter(Boolean).sort().pop();
+  $("#updated").textContent = "Schedule data last updated " + fmtDate(lastUpdate) + ", " + lastUpdate.slice(0, 4) + ".";
   renderFilters();
   render();
+  window.dispatchEvent(new Event("emba:ready"));
 })();

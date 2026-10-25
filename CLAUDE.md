@@ -1,21 +1,25 @@
 # EMBA Planner
 
-Static site (no build step) that combines every EMBA course's deliverables, readings, and class sessions.
-Hosted on GitHub Pages; open `index.html` through a local server (`python3 -m http.server 8028`),
-not `file://`.
+Static site (no build step) on GitHub Pages, plus a Cloudflare Worker (`worker/`). Serve locally
+with `python3 -m http.server 8028` (not `file://`). Live: https://dr-bmo2255.github.io/emba-planner/
 
-- `data/program.js`: class weekends, milestones, `courseRegistry` (name + color for every course)
-- `data/sessions.js`: GENERATED from the master schedule .xlsx by `tools/import_master_schedule.py`
-- `data/courses/MGTxxx.js`: one file per syllabus (schema in `.claude/skills/add-syllabus/SKILL.md`)
-- `assets/app.js`: all UI (list / calendar / by-course views, filters, details modal, .ics export)
-- `assets/assistant.js`: "Ask the Planner" chat (built-in answers + Claude via `worker/` proxy or a viewer's own key)
-- `worker/`: Cloudflare Worker that proxies Claude calls so no key lives in the browser
-- Faculty full names live in `courseRegistry[*].faculty` (sessions only carry last names)
+Data (all JSON, loaded by `assets/data.js`, fetched no-cache):
+- `data/program.json`: class weekends, milestones, `courseRegistry` (name, color, faculty for every course), chat endpoint
+- `data/sessions.json`: GENERATED from the master schedule .xlsx by `tools/import_master_schedule.py`
+- `data/courses/<ID>.json` + `data/courses/index.json`: one file per course (schema in `.claude/skills/add-syllabus/SKILL.md`)
 
-After any change, bump the `?v=` version on every asset/data URL in `index.html` so returning
-visitors don't get stale cached files.
+UI:
+- `index.html` + `assets/app.js`: planner (list / calendar / by-course, dropdown filters, Dates menu, details modal, Add to calendar, install button)
+- `assets/assistant.js`: "Ask the Planner" chat (built-in answers + Claude via the Worker)
+- `admin.html` + `assets/admin.js`: maintainer-only Manage courses page (passcode); not linked from the planner
+- `manifest.webmanifest`, `sw.js`, `assets/icons/`: installable app + offline
+- Layout tiers in `assets/styles.css`: laptop >= 1024, tablet 601-1023, phone <= 600 (dot calendar + agenda)
 
-To add or update a course from a syllabus, use the `/add-syllabus` skill.
+Worker (`worker/src`): `/v1/messages` chat proxy, `/calendar.ics` public live feed, `/admin/*`
+(extract with Claude, publish/remove/undo as GitHub commits, iPhone share-sheet inbox in KV).
+Secrets: ANTHROPIC_API_KEY, GITHUB_TOKEN, ADMIN_PASSCODE. Deploy: `cd worker && npx wrangler deploy`.
 
-Item `id`s must never change once published: checkmarks are stored in each viewer's localStorage by id.
-`syllabi/` is git-ignored on purpose. Never commit source PDFs.
+Rules:
+- Item `id`s never change once published: checkmarks are stored per viewer by id.
+- After changing any asset, bump `?v=` in `index.html`/`admin.html` and `VERSION` in `sw.js`.
+- The repo is public: never commit syllabus PDFs (`syllabi/` is git-ignored) or email addresses.

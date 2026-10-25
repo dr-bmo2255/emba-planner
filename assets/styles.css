@@ -232,21 +232,93 @@ button { font: inherit; color: inherit; }
 
 .foot { max-width: 1280px; margin: 0 auto; padding: 8px 16px 32px; color: var(--ink-3); font-size: 12px; }
 
-/* ---------- Narrow screens ---------- */
-@media (max-width: 860px) {
-  .row { grid-template-columns: 26px 1fr auto; grid-template-areas: "chk when pts" "chk title title" "chk meta meta"; row-gap: 4px; }
-  .row > .chkcell { grid-area: chk; align-self: start; padding-top: 2px; }
-  .row > .when { grid-area: when; display: flex; gap: 8px; align-items: baseline; }
-  .row > .pts { grid-area: pts; }
+/* ---------- Responsive tiers ----------
+   Laptop / web  >= 1024px : base styles above (full table, labeled calendar)
+   Tablet / iPad 601-1023px: compact two-line rows, labeled calendar, side-sheet chat
+   Phone         <= 600px  : cards, dot calendar + agenda, bottom-sheet dialogs      */
+
+/* Tablet and phone: rows become two lines (course + tags under the title). */
+@media (max-width: 1023px) {
+  .row { grid-template-columns: 26px 104px minmax(0, 1fr) auto; grid-template-areas: "chk when title pts" "chk when meta pts"; row-gap: 3px; align-items: start; }
+  .row > .chkcell { grid-area: chk; padding-top: 2px; }
+  .row > .when { grid-area: when; }
   .row > .title { grid-area: title; }
-  .row > .coursecell { grid-area: meta; display: flex; gap: 6px; flex-wrap: wrap; }
+  .row > .pts { grid-area: pts; padding-top: 1px; }
+  .row > .coursecell { grid-area: meta; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .row > .typecell, .row > .modecell, .row > .reqcell { display: none; }
   .row .metaflat { display: inline-flex !important; gap: 6px; flex-wrap: wrap; }
-  .day { min-height: 74px; }
-  .chip .ct { display: none; }
-  .chip { justify-content: center; padding: 2px; }
-  .brand-yale { font-size: 30px; }
-  .brand-sub { text-align: left; }
+  .cal-legend span:last-child { display: none; }
+  .day { min-height: 104px; }
+  .chip { font-size: 11px; }
+}
+
+/* Touch screens (phones and tablets): bigger tap targets, no hover-only affordances. */
+@media (pointer: coarse) {
+  .btn, .views button, .dd-btn { min-height: 40px; }
+  .dd-opt { padding: 10px 8px; }
+  .dd-opt input, .chk { width: 22px; height: 22px; }
+  .chip { min-height: 24px; }
+  .row { padding-top: 11px; padding-bottom: 11px; }
+}
+
+/* Phone */
+@media (max-width: 600px) {
+  body { font-size: 15px; }
+  .masthead-inner { padding-top: 12px; padding-bottom: 12px; gap: 4px; flex-direction: column; align-items: flex-start; }
+  .brand-yale { font-size: 26px; }
+  .brand-som { font-size: 13px; letter-spacing: 1.5px; }
+  .brand-sub { text-align: left; flex-direction: row; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .brand-program { font-size: 15px; }
+  .brand-cohort { font-size: 12px; }
+  .wrap { padding-top: 12px; }
+
+  .summary { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .stat { padding: 9px 11px; }
+  .stat b { font-size: 17px; }
+  .stat span { font-size: 11.5px; line-height: 1.3; display: block; }
+
+  .toolbar { gap: 8px; }
+  .views { width: 100%; }
+  .views button { flex: 1; padding: 8px 6px; }
+  #search { flex-basis: 100%; }
+  .toolbar-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .toolbar-actions .btn { padding: 8px 6px; font-size: 13.5px; }
+  .fbar { gap: 6px; }
+  .dd-btn { padding: 6px 10px; gap: 6px; }
+  .dd-name { font-size: 13.5px; }
+
+  .row { grid-template-columns: 30px 1fr auto; grid-template-areas: "chk when pts" "chk title title" "chk meta meta"; padding-left: 10px; padding-right: 12px; }
+  .row > .when { display: flex; gap: 8px; align-items: baseline; }
+  .period-head { padding: 9px 12px; }
+  .period-head h2 { font-size: 16px; }
+
+  /* Calendar: dot grid + agenda */
+  .cal-head h2 { min-width: 0; font-size: 19px; flex: 1 0 100%; }
+  .cal-head .btn { flex: 1; }
+  .cal-legend { display: none; }
+  .cal-phone .day { min-height: 54px; border: 0; padding: 4px 2px; align-items: center; cursor: pointer; font: inherit; color: inherit; }
+  .cal-phone .day.sel { box-shadow: inset 0 0 0 2px var(--yale-blue); }
+  .cal-phone .dnum { justify-content: center; }
+  .pdots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 8px; }
+  .pdot { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in srgb, var(--c) 45%, #fff); }
+  .pdot.due { background: var(--c); }
+  .pdot.done { background: var(--done); opacity: .5; }
+  .pmore { font-style: normal; font-size: 9px; line-height: 7px; color: var(--ink-3); }
+  .agenda { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px; margin-top: 12px; }
+  .agenda h3 { margin: 0 0 8px; font-size: 15px; color: var(--yale-navy); }
+  .agenda-item { display: flex; gap: 10px; width: 100%; text-align: left; border: 0; border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 7%, #fff); border-radius: 8px; padding: 10px; margin-bottom: 6px; cursor: pointer; font: inherit; color: inherit; }
+  .agenda-item.due { background: color-mix(in srgb, var(--c) 16%, #fff); }
+  .agenda-item.done { opacity: .55; }
+  .agenda-item.done b { text-decoration: line-through; }
+  .ag-time { flex: none; width: 66px; font-size: 12px; color: var(--ink-2); padding-top: 1px; }
+  .ag-main b { display: block; font-size: 14px; }
+  .ag-main small { display: block; color: var(--ink-2); font-size: 12.5px; margin-top: 2px; }
+
+  /* Dialogs become bottom sheets */
+  .modal { place-items: end center; padding: 0; }
+  .modal-card { width: 100%; max-height: 88vh; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  #modal-body { padding: 16px 16px 22px; }
+  .dl { grid-template-columns: 92px 1fr; }
 }
 .metaflat { display: none !important; }
 
@@ -314,7 +386,12 @@ button { font: inherit; color: inherit; }
 @keyframes askdot { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
 @media (max-width: 600px) {
   .ask-panel { right: 0; bottom: 0; width: 100vw; height: 100dvh; border-radius: 0; }
-  .ask-fab { right: 12px; bottom: 12px; }
+  .ask-fab { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); width: 56px; height: 56px; padding: 0; font-size: 0; display: grid; place-items: center; }
+  .ask-fab span { font-size: 24px; }
+  .wrap { padding-bottom: 84px; }
+}
+@media (min-width: 601px) and (max-width: 1023px) {
+  .ask-panel { height: min(720px, calc(100vh - 40px)); width: 400px; }
 }
 .ask-ref {
   display: inline-block; vertical-align: 1px; margin: 0 1px; padding: 0 6px; border: 0; border-radius: 999px;
@@ -325,3 +402,31 @@ button { font: inherit; color: inherit; }
 .dd-sum-strong { color: var(--yale-blue); font-weight: 700; }
 .dd-radio .dd-label small { display: block; margin-top: 1px; }
 .dd-radio input { accent-color: var(--yale-blue); }
+
+/* ---------- Add to calendar ---------- */
+.cal-modal h3 { margin-top: 4px; }
+.muted-p { color: var(--ink-2); font-size: 13px; margin: 8px 0; }
+.cal-modal hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0 6px; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.seg label { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+.seg label:has(input:checked) { border-color: var(--yale-blue); background: var(--yale-mist); color: var(--yale-navy); font-weight: 600; }
+.seg label:has(input:disabled) { opacity: .5; cursor: default; }
+.seg input { accent-color: var(--yale-blue); margin: 0; }
+.cal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.cal-btn { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--ink); background: #fff; }
+.cal-btn:hover { border-color: var(--yale-blue); background: #f7fafd; }
+.cal-btn b { color: var(--yale-blue); }
+.cal-btn span { font-size: 12px; color: var(--ink-3); }
+.cal-copy { display: flex; gap: 6px; }
+.cal-copy input { flex: 1; min-width: 0; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font: 12px ui-monospace, Menlo, monospace; color: var(--ink-2); background: #f8fafc; }
+@media (max-width: 480px) { .cal-btns { grid-template-columns: 1fr; } }
+
+/* ---------- Installed app (home screen) ---------- */
+.install-steps { padding-left: 20px; line-height: 1.7; }
+.ios-share { display: inline-block; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-size: 12px; }
+@media (display-mode: standalone) {
+  .masthead { padding-top: env(safe-area-inset-top); }
+  .foot { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
+  .ask-fab { bottom: calc(20px + env(safe-area-inset-bottom)); }
+}
+.wrap, .masthead-inner { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }

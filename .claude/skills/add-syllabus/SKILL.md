@@ -1,6 +1,6 @@
 ---
 name: add-syllabus
-description: Add or update a course in the EMBA Planner from a syllabus PDF (or refresh the master class schedule from the EMBA office .xlsx). Use when the user uploads/points to a syllabus, says a new class opened, or a schedule changed.
+description: Add or update a course in the EMBA Planner from a syllabus PDF (or refresh the master class schedule from the EMBA office .xlsx) from the command line. Use when the user hands Claude Code a syllabus file or says a schedule changed. (The maintainer can also do this in the browser at admin.html.)
 ---
 
 # Add a syllabus to the EMBA Planner
@@ -18,8 +18,8 @@ Copy the source document into `syllabi/` (git-ignored; it is never published).
 ## 1. Master schedule (.xlsx) instead of a syllabus?
 
 Run `.venv/bin/python tools/import_master_schedule.py syllabi/<file>.xlsx`, which regenerates
-`data/sessions.js`. Diff it (`git diff --stat data/sessions.js`) and summarize what moved. Also update
-`data/program.js` `classWeekends` / `milestones` if a new Program Calendar was provided. Then skip to step 5.
+`data/sessions.json`. Diff it (`git diff --stat data/sessions.json`) and summarize what moved. Also update
+`data/program.json` `classWeekends` / `milestones` if a new Program Calendar was provided. Then skip to step 5.
 
 ## 2. Extract the syllabus
 
@@ -30,16 +30,17 @@ Run `.venv/bin/python tools/import_master_schedule.py syllabi/<file>.xlsx`, whic
 Read ALL of the output. The `LINKS` section pairs each URL with the words it is anchored on.
 Use it to attach Canvas/case links to the right reading. Never invent a URL.
 
-## 3. Write `data/courses/<ID>.js`
+## 3. Write `data/courses/<ID>.json`
 
-`<ID>` is `MGT` + the 3-digit number (e.g. `MGT412`), matching `courseRegistry` in `data/program.js`
-and the `course` field in `data/sessions.js`. If the file exists, update it in place and keep every
-existing `id` stable, because users' checkmarks are keyed by `id`. Follow `data/courses/MGT411.js` as the
-canonical example. Schema:
+`<ID>` is `MGT` + the 3-digit number (e.g. `MGT412`), matching `courseRegistry` in `data/program.json`
+and the `course` field in `data/sessions.json`. If the file exists, update it in place and keep every
+existing `id` stable, because users' checkmarks are keyed by `id`. Follow `data/courses/MGT411.json` as the
+canonical example. Schema (plain JSON):
 
 ```js
-EMBA.courses.push({
-  id, code, name, term, instructor,
+{
+  id, code, name, term,
+  faculty:  [{ name, title?, url? }],      // full names
   canvas,                 // course Canvas URL if any link reveals /courses/<n>
   contacts: [{ role, name }],          // no emails: the repo is public
   grading:  [{ label, weight }],          // weights sum to 100
@@ -55,8 +56,9 @@ EMBA.courses.push({
     mode,                 // "individual" | "group" | null (unknown). Assignments/exams.
     required,             // true | false. Assignments, exams, readings, cases.
     links: [{ label, url }], notes, verify  // verify = what a human should double-check
-  }]
-});
+  }],
+  source: { type: "syllabus", file, updated }   // or { type: "web", url, updated }
+}
 ```
 
 Rules:
@@ -68,23 +70,19 @@ Rules:
 - Readings and cases are dated to the class session they prepare for, with `time` = that session's start
   (use the half-session start for "A"/"B" splits so they overlay correctly).
 - Due times: "before 8am" → `"08:00"`; "midnight"/"end of day" → `"23:59"`; "start of class" → session start.
-- Cross-check dates against `data/sessions.js` (the master schedule). If the syllabus and the master
+- Cross-check dates against `data/sessions.json` (the master schedule). If the syllabus and the master
   schedule disagree, keep the syllabus date and add a `verify` note naming both.
 - Office hours / review sessions → `type: "office"` with Zoom links when given.
 - Don't copy syllabus prose wholesale; titles plus one-line notes are enough. No personal phone numbers.
 
 ## 4. Register it
 
-- Add `<script src="data/courses/<ID>.js"></script>` inside the `<!-- DATA -->` block of `index.html`
-  (keep alphabetical).
-- If the course is missing from `courseRegistry` in `data/program.js`, add it with a distinct color
+- Add the id to `data/courses/index.json` (`courses`, sorted) and set its `updated` to today.
+- If the course is missing from `courseRegistry` in `data/program.json`, add it with a distinct color
   that is readable as white text.
-- Set `courseRegistry.<ID>.faculty` to the instructors' full names from the syllabus (with title and
-  Yale profile URL when known). Remove any `verify` flag the syllabus now confirms.
-- Bump the `?v=` cache-busting version on every asset/data URL in `index.html`.
-- Bump `EMBA.program.updated` to today's date.
+- Remove any `verify` flag on `courseRegistry.<ID>.faculty` that the syllabus now confirms.
 
-## 5. Verify
+## 5. Verify, then commit and push (live in about a minute)
 
 Serve the folder (`python3 -m http.server 8028`) or use the `emba-planner` preview, then check that there
 are no console errors, the new course appears in List, Calendar, and By course, links open, and the
