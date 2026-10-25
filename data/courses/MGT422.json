@@ -1,14 +1,16 @@
 {
   "id": "MGT422",
-  "code": "MGT 422E",
+  "code": "MGT 422 E1",
   "name": "Operations Engine",
   "term": "Fall 2026",
-  "canvas": "https://yale.instructure.com/courses/122098",
-  "contacts": [
+  "faculty": [
     {
-      "role": "Professor",
-      "name": "Lesley Meng"
-    },
+      "name": "Lesley Meng",
+      "title": "Professor",
+      "url": null
+    }
+  ],
+  "contacts": [
     {
       "role": "TA",
       "name": "Kwanmo Choi"
@@ -16,72 +18,115 @@
     {
       "role": "TA",
       "name": "Keshav Sharma"
+    },
+    {
+      "role": "Canvas site support (Mon-Fri 8:30am-5pm)",
+      "name": "Malik Harris"
     }
   ],
   "grading": [
     {
-      "label": "Final exam (take-home)",
-      "weight": 50
+      "label": "Attendance and Participation",
+      "weight": 20
     },
     {
-      "label": "Homework assignments (4)",
+      "label": "Homework Assignments (4)",
       "weight": 30
     },
     {
-      "label": "Attendance and participation",
-      "weight": 20
+      "label": "Final Exam",
+      "weight": 50
     }
   ],
-  "notes": "Assigned cases must be read before class. All non-case readings are optional. No AI in class or on the final; no HBS materials in AI tools.",
+  "resources": [
+    {
+      "label": "Academic Policies, SOM Bulletin",
+      "url": "https://catalog.yale.edu/management/mba-executives/academic-policies/"
+    },
+    {
+      "label": "M.B.A. for Executives Program (SOM Bulletin)",
+      "url": "https://catalog.yale.edu/management/mba-executives/"
+    },
+    {
+      "label": "SOM Bulletin",
+      "url": "https://catalog.yale.edu/management/"
+    }
+  ],
+  "notes": "AI tools are allowed outside class and on homework if disclosed and acknowledged, but prohibited in class and on the final exam; HBS case materials may not be used with any AI tool. Attendance is required unless the EMBA team excuses an absence; cases must be read before class, and non-case readings are optional.",
   "topics": [
     {
       "date": "2026-10-09",
       "start": "16:15",
-      "label": "1 Introduction / Process Analysis (in-class exercise, no prep)"
+      "label": "1 Introduction"
     },
     {
       "date": "2026-10-23",
       "start": "14:30",
-      "label": "2 Process Analysis (Scharffen Berger) / Process Analysis & Diagnostics (National Cranberry)"
+      "label": "2A Process Analysis"
+    },
+    {
+      "date": "2026-10-23",
+      "start": "16:00",
+      "label": "2B Process Analysis & Diagnostics"
     },
     {
       "date": "2026-11-06",
       "start": "14:30",
-      "label": "3 Strategic Process Design (Beleza Natural) / Variability: Queueing"
+      "label": "3A Strategic Process Design"
+    },
+    {
+      "date": "2026-11-06",
+      "start": "16:00",
+      "label": "3B Variability: Queueing"
     },
     {
       "date": "2026-11-06",
       "start": "17:45",
-      "label": "3 Variability: Queue Configurations (in-class exercise)"
+      "label": "3C Variability: Queue Configurations"
     },
     {
       "date": "2026-11-20",
       "start": "14:30",
-      "label": "4 Inventory: Newsvendor Model (Ludo Press) / EOQ Model"
+      "label": "4A Inventory: Newsvendor Model"
+    },
+    {
+      "date": "2026-11-20",
+      "start": "16:00",
+      "label": "4B Inventory: EOQ Model"
     },
     {
       "date": "2026-12-04",
       "start": "14:30",
-      "label": "5 Quality Management (Ritz-Carlton) / Lean Operations (Toyota)"
+      "label": "5A Quality Management"
+    },
+    {
+      "date": "2026-12-04",
+      "start": "16:00",
+      "label": "5B Lean Operations"
     },
     {
       "date": "2026-12-18",
       "start": "14:30",
-      "label": "6 Ops as a Competitive Advantage (Zara) / Wrap Up & Review"
+      "label": "6A Ops as a Competitive Advantage"
+    },
+    {
+      "date": "2026-12-18",
+      "start": "16:00",
+      "label": "6B Wrap Up & Review"
     }
   ],
   "items": [
     {
       "id": "422-hw1",
       "type": "assignment",
-      "title": "Homework 1 (National Cranberry Case)",
+      "title": "Homework 1",
       "date": "2026-10-23",
       "time": "08:00",
       "points": 7.5,
       "mode": "group",
       "required": true,
-      "notes": "Submit electronically via Canvas by 8 AM ET. Your answers may form the basis for class discussion. AI use must be disclosed.",
-      "verify": "Points split evenly: 4 homeworks = 30%."
+      "notes": "Group assignment; submit via Canvas by 8am ET on the day of Session 2.",
+      "verify": "Points split evenly: 30% homework across 4 assignments."
     },
     {
       "id": "422-hw2",
@@ -92,8 +137,8 @@
       "points": 7.5,
       "mode": "individual",
       "required": true,
-      "notes": "Submit electronically via Canvas by 8 AM ET. Your answers may form the basis for class discussion. AI use must be disclosed.",
-      "verify": "Points split evenly: 4 homeworks = 30%."
+      "notes": "Submit via Canvas by 8am ET on the day of Session 4.",
+      "verify": "Points split evenly: 30% homework across 4 assignments."
     },
     {
       "id": "422-hw3",
@@ -104,8 +149,8 @@
       "points": 7.5,
       "mode": "individual",
       "required": true,
-      "notes": "Submit electronically via Canvas by 8 AM ET. Your answers may form the basis for class discussion. AI use must be disclosed.",
-      "verify": "Points split evenly: 4 homeworks = 30%."
+      "notes": "Submit via Canvas by 8am ET on the day of Session 5.",
+      "verify": "Points split evenly: 30% homework across 4 assignments."
     },
     {
       "id": "422-hw4",
@@ -116,18 +161,17 @@
       "points": 7.5,
       "mode": "individual",
       "required": true,
-      "notes": "Submit electronically via Canvas by 8 AM ET. Your answers may form the basis for class discussion. AI use must be disclosed.",
-      "verify": "Points split evenly: 4 homeworks = 30%."
+      "notes": "Submit via Canvas by 8am ET on the day of Session 6.",
+      "verify": "Points split evenly: 30% homework across 4 assignments."
     },
     {
       "id": "422-final",
       "type": "exam",
       "title": "Take-home final exam",
-      "date": null,
       "points": 50,
-      "mode": "individual",
       "required": true,
-      "notes": "Covers all lectures, cases, and discussions. Date to be announced after the last session (12/18)."
+      "notes": "Covers all course material (lectures, cases, discussions). No AI tools allowed. Date TBA; details to be announced.",
+      "verify": "Date not given in the syllabus. Mode not stated explicitly."
     },
     {
       "id": "422-r-pa1",
@@ -141,7 +185,8 @@
           "label": "Canvas",
           "url": "https://yale.instructure.com/courses/122098/files/folder/Session%201%3A%20October%209%2C%202026/Optional%20Reading?preview=13081147"
         }
-      ]
+      ],
+      "notes": "Optional."
     },
     {
       "id": "422-c-scharffen",
@@ -169,7 +214,8 @@
           "label": "Canvas",
           "url": "https://yale.instructure.com/courses/122098/files/folder/Session%202%3A%20October%2023%2C%202026/Optional%20Reading?preview=13081149"
         }
-      ]
+      ],
+      "notes": "Optional."
     },
     {
       "id": "422-c-cranberry",
@@ -211,7 +257,8 @@
           "label": "Canvas",
           "url": "https://yale.instructure.com/courses/122098/files/folder/Session%203%3A%20November%206%2C%202026/Optional%20Readings?preview=13080993"
         }
-      ]
+      ],
+      "notes": "Optional."
     },
     {
       "id": "422-r-ct8b",
@@ -220,12 +267,8 @@
       "date": "2026-11-06",
       "time": "17:45",
       "required": false,
-      "links": [
-        {
-          "label": "Canvas",
-          "url": "https://yale.instructure.com/courses/122098/files/folder/Session%203%3A%20November%206%2C%202026/Optional%20Readings?preview=13080993"
-        }
-      ]
+      "notes": "Optional. Find on Canvas, Session 3 folder.",
+      "verify": "No URL was captured from the PDF for this reading."
     },
     {
       "id": "422-c-ludo",
@@ -253,7 +296,8 @@
           "label": "Canvas",
           "url": "https://yale.instructure.com/courses/122098/files/folder/Session%204%3A%20November%2020%2C%202026/Optional%20Readings?preview=13081155"
         }
-      ]
+      ],
+      "notes": "Optional."
     },
     {
       "id": "422-r-inventory",
@@ -267,7 +311,8 @@
           "label": "Canvas",
           "url": "https://yale.instructure.com/courses/122098/files/folder/Session%204%3A%20November%2020%2C%202026/Optional%20Readings?preview=13081005"
         }
-      ]
+      ],
+      "notes": "Optional."
     },
     {
       "id": "422-c-ritz",
@@ -295,7 +340,8 @@
           "label": "Canvas",
           "url": "https://yale.instructure.com/courses/122098/files/folder/Session%205%3A%20December%204%2C%202026/Optional%20Reading?preview=13080992"
         }
-      ]
+      ],
+      "notes": "Optional."
     },
     {
       "id": "422-c-toyota",
@@ -328,7 +374,7 @@
     {
       "id": "422-oh-prof",
       "type": "office",
-      "title": "Prof. Meng office hours",
+      "title": "Prof. Meng office hours (Zoom)",
       "date": "2026-10-20",
       "time": "19:00",
       "links": [
@@ -336,12 +382,13 @@
           "label": "Zoom",
           "url": "https://yale.zoom.us/j/91539449151"
         }
-      ]
+      ],
+      "notes": "Also available by appointment."
     },
     {
       "id": "422-oh-ta1",
       "type": "office",
-      "title": "TA office hours",
+      "title": "TA office hours (Zoom)",
       "date": "2026-11-12",
       "time": "19:00",
       "links": [
@@ -354,7 +401,7 @@
     {
       "id": "422-rv-1",
       "type": "office",
-      "title": "Review session",
+      "title": "Review session (Zoom)",
       "date": "2026-11-12",
       "time": "20:00",
       "links": [
@@ -367,7 +414,7 @@
     {
       "id": "422-oh-ta2",
       "type": "office",
-      "title": "TA office hours",
+      "title": "TA office hours (Zoom)",
       "date": "2026-12-01",
       "time": "20:00",
       "links": [
@@ -380,7 +427,7 @@
     {
       "id": "422-oh-ta3",
       "type": "office",
-      "title": "TA office hours",
+      "title": "TA office hours (Zoom)",
       "date": "2026-12-10",
       "time": "20:00",
       "links": [
@@ -388,12 +435,13 @@
           "label": "Zoom",
           "url": "https://yale.zoom.us/j/98935750319"
         }
-      ]
+      ],
+      "verify": "Listed at the same time as the Dec 10 review session; confirm."
     },
     {
       "id": "422-rv-2",
       "type": "office",
-      "title": "Review session",
+      "title": "Review session (Zoom)",
       "date": "2026-12-10",
       "time": "20:00",
       "links": [
@@ -401,17 +449,13 @@
           "label": "Zoom",
           "url": "https://yale.zoom.us/j/99984209870"
         }
-      ]
+      ],
+      "verify": "Listed at the same time as the Dec 10 TA office hours; confirm."
     }
   ],
   "source": {
     "type": "syllabus",
-    "note": "Initial import from the Fall 2026 syllabus (or cohort tracker for MGT409)",
+    "file": "MGT422E+FA26+Syllabus.pdf",
     "updated": "2026-10-25"
-  },
-  "faculty": [
-    {
-      "name": "Lesley Meng"
-    }
-  ]
+  }
 }
