@@ -1,7 +1,7 @@
 // Sends the sign-in code. EMAIL_MODE=log (local development) just prints it; EMAIL_MODE=resend
 // uses Resend (https://resend.com) with RESEND_API_KEY and a verified EMAIL_FROM domain.
 export async function sendLoginCode(env, email, code) {
-  const subject = code + " is your EMBA Planner sign-in code";
+  const subject = code + " is your EMBA Planner sign-in code (unofficial student tool)";
   const text = `Your EMBA Planner sign-in code is ${code}\n\nIt expires in 10 minutes. If you didn't ask for it, you can ignore this email.\n\n(EMBA Planner is an unofficial student tool for the Yale SOM EMBA Class of 2028.)`;
   if (env.EMAIL_MODE !== "resend") {
     console.log(`[email:log] to=${email} subject="${subject}"`);

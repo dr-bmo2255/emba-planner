@@ -50,7 +50,8 @@ const SUGGESTIONS = [
   "Who teaches Operations?",
   "How is Competitor graded?",
   "What group assignments are left?",
-  "Who's the colloquium speaker on Nov 6?"
+  "Who's the colloquium speaker on Nov 6?",
+  "Note on Competitor HW3: split Q1–Q3 with my team"
 ];
 
 let history = [];   // Claude conversation (messages array, assistant content kept verbatim)
@@ -122,7 +123,7 @@ async function ask(q) {
   $("#askSuggest").innerHTML = "";
   addMsg("me", esc(q));
   if (mode() === "claude") await askClaude(q);
-  else addMsg("bot", localAnswer(q));
+  else addMsg("bot", (await localNote(q)) || localAnswer(q));
 }
 
 // ---------------------------------------------------------------- settings
@@ -219,6 +220,26 @@ function findWindow(q) {
 }
 
 const STOP = new Set("what whats when where which who whos how is are the a an of for to in on do does did i my me we our need have has any there this that next due with about class course read reading readings show tell list all please give".split(" "));
+
+// "note on Competitor HW3: Pat does Q1-2" → save a note without Claude.
+async function localNote(q) {
+  const m = q.match(/^\s*(?:please\s+)?(?:add|make|save|put|jot)?\s*(?:a\s+)?note\s+(?:on|to|for|about)\s+(.+?)\s*[:\-–—]\s*([\s\S]+)$/i);
+  if (!m) return null;
+  const target = norm(m[1]), noteText = m[2].trim();
+  const courses = findCourses(m[1]);
+  const words = target.split(/[^a-z0-9]+/).filter((w) => w.length > 1 && !STOP.has(w) && !courses.some((id) => COURSE_WORDS[id].has(w)));
+  const scored = A.items.filter((it) => !courses.length || courses.includes(it.course)).map((it) => {
+    const t = norm(it.title);
+    return { it, s: words.filter((w) => t.includes(w)).length };
+  }).filter((x) => x.s > 0).sort((a, b) => b.s - a.s);
+  if (!scored.length) return `<p>I couldn't find "${esc(m[1])}". Try the course and title, e.g. "note on Competitor HW3: …".</p>`;
+  const top = scored.filter((x) => x.s === scored[0].s).map((x) => x.it);
+  if (top.length > 1) return `<p>Which one did you mean? Ask again with a more specific name:</p>` + itemList(top, 6);
+  try {
+    await A.saveNote(top[0].id, noteText, /\b(replace|overwrite)\b/i.test(q) ? "replace" : "append");
+    return `<p>📝 Saved your note on:</p>` + itemList([top[0]], 1);
+  } catch (e) { return `<p>Couldn't save the note: ${esc(e.message)}</p>`; }
+}
 
 function localAnswer(q) {
   const n = norm(q);
@@ -385,6 +406,8 @@ function getSystem() {
 
 Answer from the planner data below; it was extracted from the course syllabi and the EMBA office's master schedule. All times are US Eastern. Readings and cases are due by the start of the class session listed. If the data doesn't answer the question, say so plainly and suggest checking Canvas or asking the professor or TA. Don't guess dates, points, or links. When an item carries a VERIFY note, mention that caveat. The user's message starts with today's date and the ids they've marked complete; use them for "upcoming", "left", or "overdue" questions.
 
+The student can ask you to save a personal note on a planner item ("note on Competitor HW3: …", "remind me on the Spotify case that …"). Use the save_note tool for that: pick the item id from the planner data that clearly matches what they named. If two or more items could match, ask which one (list them with their [[id]] links) instead of guessing. Use mode "append" unless they ask to replace or overwrite the note. Save the note text close to their words. After saving, confirm in one line with the item's [[id]] link. Their existing notes are listed in their message.
+
 Keep replies short and scannable: lead with the direct answer, then a compact bulleted list if there are several items. When you mention a specific planner item, put its id in double square brackets right after it, e.g. "HW2 [[410-hw2]]"; the app turns those into clickable links. You may use **bold**, bullet lists, and Markdown links to URLs that appear in the data. No tables or headings.
 
 <planner_data>
@@ -418,31 +441,75 @@ function renderMarkdown(text) {
   return out.join("");
 }
 
+// ---------------------------------------------------------------- chat → personal notes
+const SAVE_NOTE_TOOL = {
+  name: "save_note",
+  description: "Save a private note for the signed-in student on one planner item (assignment, reading, case, class session, team meeting, etc.). Only this student can see it.",
+  strict: true,
+  input_schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["item_id", "text", "mode"],
+    properties: {
+      item_id: { type: "string", description: "The planner item id, exactly as shown in [brackets] in the planner data." },
+      text: { type: "string", description: "The note to save, close to the student's own words." },
+      mode: { type: "string", enum: ["append", "replace"], description: "append adds a new line to any existing note; replace overwrites it." }
+    }
+  }
+};
+
+async function runTool(block) {
+  const fail = (m) => ({ type: "tool_result", tool_use_id: block.id, is_error: true, content: m });
+  if (block.name !== "save_note") return fail("Unknown tool.");
+  const inp = block.input || {};
+  if (typeof inp.item_id !== "string" || typeof inp.text !== "string" || !inp.text.trim()) return fail("item_id and a non-empty text are required.");
+  if (!A.itemById[inp.item_id]) return fail("No planner item has id " + inp.item_id + ". Pick an id from the planner data, or ask the student which item they mean.");
+  try {
+    const saved = await A.saveNote(inp.item_id, inp.text, inp.mode === "replace" ? "replace" : "append");
+    return { type: "tool_result", tool_use_id: block.id, content: "Saved. The note on " + inp.item_id + " now reads:\n" + saved };
+  } catch (e) {
+    return fail("Couldn't save: " + e.message);
+  }
+}
+
 async function askClaude(q) {
   busy = true;
   $("#askSend").disabled = true;
   const bubble = addMsg("bot", `<p class="ask-typing"><span></span><span></span><span></span></p>`);
-  const prefix = `Today is ${A.fmtDow(today)}, ${today}. Items I've marked complete: ${[...A.done].join(", ") || "none"}.\n\n`;
+  const myNotes = Object.entries(A.notes).map(([id, n]) => `[${id}] ${n.replace(/\s+/g, " ").slice(0, 300)}`).join("\n");
+  const prefix = `Today is ${A.fmtDow(today)}, ${today}. Items I've marked complete: ${[...A.done].join(", ") || "none"}.\n` +
+    `My notes so far:\n${myNotes || "(none)"}\n\n`;
   history.push({ role: "user", content: prefix + q });
   let text = "";
   try {
     const c = await getClient();
-    const stream = c.beta.messages.stream({
-      model: CFG.model,
-      max_tokens: 16000,
-      system: [{ type: "text", text: getSystem(), cache_control: { type: "ephemeral" } }],
-      output_config: { effort: "low" },
-      // On a safety-classifier decline, the API reruns the request on a fallback model.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      messages: history
-    });
-    stream.on("text", (delta) => {
-      text += delta;
-      bubble.innerHTML = renderMarkdown(text);
-      log.scrollTop = log.scrollHeight;
-    });
-    const final = await stream.finalMessage();
+    let final;
+    // Tool loop: Claude may call save_note; we run it here and send the result back.
+    for (let round = 0; round < 4; round++) {
+      const stream = c.beta.messages.stream({
+        model: CFG.model,
+        max_tokens: 16000,
+        system: [{ type: "text", text: getSystem(), cache_control: { type: "ephemeral" } }],
+        tools: [SAVE_NOTE_TOOL],
+        output_config: { effort: "low" },
+        // On a safety-classifier decline, the API reruns the request on a fallback model.
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        messages: history
+      });
+      stream.on("text", (delta) => {
+        text += delta;
+        bubble.innerHTML = renderMarkdown(text);
+        log.scrollTop = log.scrollHeight;
+      });
+      final = await stream.finalMessage();
+      if (final.stop_reason !== "tool_use") break;
+      history.push({ role: "assistant", content: final.content });
+      const results = [];
+      for (const b of final.content.filter((x) => x.type === "tool_use")) results.push(await runTool(b));
+      history.push({ role: "user", content: results }); // all results in one message
+      if (text && !/\s$/.test(text)) text += "\n\n";
+    }
     if (final.stop_reason === "refusal") {
       history.pop();
       bubble.innerHTML = "<p>Claude couldn't answer that one. Try rephrasing, or switch to built-in answers in ⚙ Settings.</p>";
@@ -460,7 +527,7 @@ async function askClaude(q) {
     else if (An && err instanceof An.RateLimitError) msg = "Claude is rate-limited right now. Showing built-in answers instead.";
     else if (An && err instanceof An.APIError && err.status) msg = `Claude returned an error (${err.status}). Showing built-in answers instead.`;
     console.error("[assistant]", err);
-    bubble.innerHTML = `<p class="ask-hint">${esc(msg)}</p>` + localAnswer(q);
+    bubble.innerHTML = `<p class="ask-hint">${esc(msg)}</p>` + ((await localNote(q)) || localAnswer(q));
   } finally {
     busy = false;
     $("#askSend").disabled = false;

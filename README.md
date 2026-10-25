@@ -23,7 +23,8 @@ It's the combined view Canvas doesn't give us.
 ## Accounts, to-dos, and teams
 
 - **Sign in** with your @yale.edu email; you get a 6-digit code by email and stay signed in for 90 days.
-- **Your checkmarks and "My courses"** are saved to your account, so phone and laptop stay in sync.
+- **Your checkmarks, "My courses", and private notes** (a 📝 box on every entry) are saved to your
+  account, so phone and laptop stay in sync. You can also tell the chat "note on Competitor HW3: …".
 - **Teams**: anyone can create a team and share its invite link. Members add weekly / every-other-week
   meetings (with skipped dates) or one-off meetings. Teams are private to their members.
 - **Calendars**: every course, the program calendar, and each of your teams is its own subscription.
@@ -33,7 +34,9 @@ It's the combined view Canvas doesn't give us.
 
 Sign in with the maintainer account and open **Manage courses** from the account menu (`/admin.html`).
 Drop a syllabus PDF or paste a public course page; Claude extracts it, you review, and Publish makes it
-live for everyone immediately. Every change can be undone there. On iPhone, the "Add to EMBA Planner"
+live for everyone immediately. Anything still undecided (group or individual, points, dates) can be
+edited later right in the entry's details ("Edit for everyone"), and Manage courses lists every
+open question. Every change can be undone there. On iPhone, the "Add to EMBA Planner"
 Shortcut sends a PDF from Canvas's Share button straight to that page (setup steps are on the page).
 
 Command line alternative, in Claude Code from this folder: `/add-syllabus syllabi/<file>.pdf`.

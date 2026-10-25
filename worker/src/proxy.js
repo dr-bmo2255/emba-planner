@@ -1,7 +1,8 @@
 // POST /v1/messages: the "Ask the Planner" chat (signed-in users only). Forwards to Anthropic with
-// the key held here, so no key ever lives in the browser. Model forced, max_tokens capped, tools stripped,
-// beta headers allowlisted.
+// the key held here, so no key ever lives in the browser. Model forced, max_tokens capped, only the
+// save_note client tool allowed, beta headers allowlisted.
 const ALLOWED_BETAS = new Set(["server-side-fallback-2026-07-01"]);
+const ALLOWED_TOOLS = new Set(["save_note"]);
 
 export async function handleProxy(request, env, cors) {
   cors = cors || {};
@@ -12,7 +13,11 @@ export async function handleProxy(request, env, cors) {
   }
   body.model = env.MODEL || "claude-opus-5-5";
   body.max_tokens = Math.min(Number(body.max_tokens) || 4096, Number(env.MAX_TOKENS) || 16000);
-  delete body.tools; delete body.tool_choice; delete body.mcp_servers; delete body.container;
+  // Only the chat's own client-side tool (save_note runs in the browser) may pass; no server tools.
+  body.tools = (Array.isArray(body.tools) ? body.tools : []).filter((t) => t && !t.type && ALLOWED_TOOLS.has(t.name));
+  if (!body.tools.length) delete body.tools;
+  if (body.tool_choice && body.tool_choice.type !== "auto") delete body.tool_choice;
+  delete body.mcp_servers; delete body.container;
 
   const betas = (request.headers.get("anthropic-beta") || "").split(",").map((s) => s.trim()).filter((b) => ALLOWED_BETAS.has(b));
   const headers = {

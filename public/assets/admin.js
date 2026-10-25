@@ -82,6 +82,7 @@ let current = {}; // id -> course JSON as stored in the database
 async function loadCourses() {
   const data = await (await call("data")).json();
   current = Object.fromEntries(data.courses.map((c) => [c.id, c]));
+  renderOpenQuestions();
   const sel = $("#courseHint");
   const keep = sel.value;
   sel.innerHTML = '<option value="">Detect automatically</option>' + Object.entries(REG).filter(([id]) => id !== "PROGRAM")
@@ -109,6 +110,24 @@ $("#courseList").addEventListener("click", async (e) => {
     loadCourses(); loadHistory();
   } catch (err) { b.disabled = false; alert("Couldn't remove: " + err.message); }
 });
+
+// ---------------------------------------------------------------- open questions
+function renderOpenQuestions() {
+  const rows = [];
+  Object.values(current).sort((a, b) => a.id.localeCompare(b.id)).forEach((c) => c.items.forEach((it) => {
+    const due = it.type === "assignment" || it.type === "exam";
+    const why = [];
+    if (due && !it.mode) why.push("group or individual?");
+    if (due && it.points == null) why.push("no points");
+    if (!it.date && it.type !== "office") why.push("no date");
+    if (it.verify) why.push("⚠ " + it.verify);
+    if (why.length) rows.push({ c, it, why });
+  }));
+  $("#openQs").innerHTML = rows.length ? rows.map(({ c, it, why }) => `<div class="crow" style="--c:${(REG[c.id] || {}).color || "#00356b"}"><i class="sw"></i>
+    <div class="cname"><b>${esc(c.code.replace(/^MGT /, "") + " · " + it.title)}</b><span>${esc(why.join(" · "))}</span></div>
+    <a class="btn btn-ghost btn-sm" href="./?item=${encodeURIComponent(it.id)}" target="_blank" rel="noopener">Open</a></div>`).join("")
+    : '<p class="muted">Nothing open. Every item has its details settled.</p>';
+}
 
 // ---------------------------------------------------------------- teams overview
 async function loadTeams() {

@@ -75,7 +75,7 @@ const DAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 
 /** A team's meetings: weekly series become RRULE events (with EXDATE for skipped dates). */
 function buildTeamIcs(team, meetings, skips) {
-  const L = header(team.name + " (team)", "Meetings for " + team.name + " · EMBA Planner");
+  const L = header(team.name + " (team)", "Meetings for " + team.name + " · Unofficial EMBA Planner");
   const stamp = stampNow();
   for (const m of meetings) {
     L.push("BEGIN:VEVENT", "UID:meeting-" + m.id + "@emba28-planner", "DTSTAMP:" + stamp);
@@ -115,10 +115,10 @@ function buildIcs(data, q) {
 
   const stamp = stampNow();
   // A single-course feed is named after the course, so each shows up as its own calendar.
-  let calName = "EMBA C28 Planner";
+  let calName = "EMBA C28 Planner (unofficial)";
   if (courseFilter && courseFilter.size === 1) {
     const only = [...courseFilter][0];
-    calName = only === "PROGRAM" ? "EMBA class weekends & events" : only.replace("MGT", "") + " " + info(only).name + " · EMBA";
+    calName = only === "PROGRAM" ? "EMBA class weekends & events (unofficial)" : only.replace("MGT", "") + " " + info(only).name + " · EMBA (unofficial)";
   }
   const L = header(calName, "Yale SOM EMBA Class of 2028 deadlines, readings, and classes (unofficial). Confirm on Canvas.");
   const addMin = (t, m) => { const [h, mm] = t.split(":").map(Number); const x = Math.max(0, h * 60 + mm + m); return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };

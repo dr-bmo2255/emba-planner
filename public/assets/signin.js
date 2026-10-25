@@ -11,8 +11,8 @@ window.showSignIn = function (opts) {
   function card(inner) {
     root.innerHTML = `<div class="signin-card">
       <div class="signin-brand"><span class="brand-yale">Yale</span><span class="brand-som">School of Management</span></div>
-      <h1>EMBA Planner</h1><p class="signin-sub">Class of 2028 · assignments, readings, classes, and teams</p>${inner}
-      <p class="signin-foot">Unofficial, student-built tool. Yale accounts only.</p></div>`;
+      <h1>EMBA Planner <span class="unofficial">Unofficial</span></h1><p class="signin-sub">Class of 2028 · assignments, readings, classes, and teams</p>${inner}
+      <p class="signin-foot">Unofficial, student-built tool, not affiliated with Yale SOM. Yale accounts only.<br>Created by Dr. BMo · EMBA ’28</p></div>`;
     const f = root.querySelector("input");
     if (f) f.focus();
   }

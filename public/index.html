@@ -11,12 +11,12 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="assets/icons/favicon-64.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
-  <title>EMBA Planner</title>
+  <title>Unofficial EMBA Planner</title>
   <meta name="description" content="Combined assignments, readings, and class schedule for the Yale SOM EMBA Class of 2028.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=2026-10-25p">
+  <link rel="stylesheet" href="assets/styles.css?v=2026-10-25s">
 </head>
 <body>
   <header class="masthead">
@@ -27,7 +27,7 @@
       </div>
       <div class="brand-sub">
         <span class="brand-program">MBA for Executives</span>
-        <span class="brand-cohort">Class of 2028 · Course Planner</span>
+        <span class="brand-cohort">Class of 2028 · Unofficial Course Planner</span>
       </div>
       <div class="acct" id="acct"></div>
     </div>
@@ -61,6 +61,7 @@
     Unofficial, student-built planner. Not affiliated with or endorsed by Yale SOM. Dates are subject to change, so always confirm on Canvas.
     Your checkmarks, courses, and teams are saved to your account.
     <span id="updated"></span>
+    <span class="credit">Created by Dr. BMo · EMBA ’28</span>
   </footer>
 
   <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
@@ -76,10 +77,10 @@
     // Offline support on the real site; skipped on localhost so development always loads fresh code.
     if ("serviceWorker" in navigator && location.hostname !== "localhost") addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
-  <script src="assets/signin.js?v=2026-10-25p"></script>
-  <script src="assets/teams.js?v=2026-10-25p"></script>
-  <script src="assets/data.js?v=2026-10-25p"></script>
-  <script src="assets/app.js?v=2026-10-25p"></script>
-  <script type="module" src="assets/assistant.js?v=2026-10-25p"></script>
+  <script src="assets/signin.js?v=2026-10-25s"></script>
+  <script src="assets/teams.js?v=2026-10-25s"></script>
+  <script src="assets/data.js?v=2026-10-25s"></script>
+  <script src="assets/app.js?v=2026-10-25s"></script>
+  <script type="module" src="assets/assistant.js?v=2026-10-25s"></script>
 </body>
 </html>

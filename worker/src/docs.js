@@ -1,6 +1,6 @@
 // Course data in D1. Documents: 'program', 'sessions', 'course:<ID>'. Every change is logged
 // in doc_changes (before + after) so the maintainer can undo any of them.
-import { HttpError, json, body, nowIso, sha256, randomToken } from "./util.js";
+import { HttpError, json, body, nowIso, sha256, randomToken, isDate, isTime } from "./util.js";
 import { requireAdmin } from "./auth.js";
 
 export async function loadAll(env) {
@@ -40,6 +40,61 @@ export async function publishCourse(request, env, user) {
   const src = c.source && (c.source.url || c.source.file) ? ", from " + (c.source.url || c.source.file) : "";
   await writeDoc(env, user, "course:" + c.id, JSON.stringify(c), (existing ? "Update " : "Add ") + c.code + " " + c.name + src);
   return json({ ok: true });
+}
+
+/** Edit fields of one imported item, e.g. set "group" once the professor decides. Undoable. */
+export async function editItem(request, env, user) {
+  requireAdmin(user);
+  const { courseId, itemId, changes } = await body(request);
+  const key = "course:" + courseId;
+  const row = await env.DB.prepare("SELECT json FROM docs WHERE key = ?").bind(key).first();
+  if (!row) throw new HttpError(404, "Course not found.");
+  const c = JSON.parse(row.json);
+  const it = (c.items || []).find((x) => x.id === itemId);
+  if (!it) throw new HttpError(404, "Item not found.");
+  const ch = changes || {};
+  const said = [];
+  const set = (k, v, label) => {
+    const before = it[k] == null ? null : it[k];
+    if (v === before) return;
+    if (v == null) delete it[k]; else it[k] = v;
+    said.push(label);
+  };
+  if ("title" in ch) {
+    const t = String(ch.title || "").trim();
+    if (!t || t.length > 200) throw new HttpError(400, "Title is required (max 200 characters).");
+    set("title", t, "title");
+  }
+  if ("date" in ch) {
+    if (ch.date !== null && !isDate(ch.date)) throw new HttpError(400, "Invalid date.");
+    set("date", ch.date, "date");
+  }
+  if ("time" in ch) {
+    if (ch.time !== null && !isTime(ch.time)) throw new HttpError(400, "Invalid time.");
+    set("time", ch.time, "time");
+  }
+  if ("points" in ch) {
+    const p = ch.points === null || ch.points === "" ? null : Number(ch.points);
+    if (p !== null && (!isFinite(p) || p < 0 || p > 100)) throw new HttpError(400, "Points must be a percent from 0 to 100.");
+    set("points", p, "points " + (p == null ? "unset" : p + "%"));
+  }
+  if ("mode" in ch) {
+    if (![null, "individual", "group"].includes(ch.mode)) throw new HttpError(400, "Work must be individual, group, or not yet specified.");
+    set("mode", ch.mode, ch.mode ? ch.mode : "work not yet specified");
+  }
+  if ("required" in ch) {
+    if (![null, true, false].includes(ch.required)) throw new HttpError(400, "Invalid requirement.");
+    set("required", ch.required, ch.required === false ? "optional" : "required");
+  }
+  for (const [k, max] of [["notes", 1000], ["verify", 500]]) {
+    if (!(k in ch)) continue;
+    const v = ch[k] == null || String(ch[k]).trim() === "" ? null : String(ch[k]).trim();
+    if (v && v.length > max) throw new HttpError(400, k + " is too long (max " + max + ").");
+    set(k, v, k === "verify" ? (v ? "verify note" : "confirmed") : "notes");
+  }
+  if (!said.length) return json({ ok: true, item: it, unchanged: true });
+  await writeDoc(env, user, key, JSON.stringify(c), "Edit " + c.code + ": " + it.title + " (" + said.join(", ") + ")");
+  return json({ ok: true, item: it });
 }
 
 export async function removeCourse(request, env, user) {

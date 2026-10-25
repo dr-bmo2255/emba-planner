@@ -155,6 +155,7 @@
 
   // ---------- state ----------
   const done = new Set(D.me.done);
+  const notes = Object.assign({}, D.me.notes || {});   // itemId -> this student's private note
   let forwarded = [];
   try { forwarded = JSON.parse(sessionStorage.getItem("emba28.import") || "[]"); } catch (e) { forwarded = []; }
   const legacy = [...new Set(load(STORE_DONE, []).concat(Array.isArray(forwarded) ? forwarded.filter((x) => typeof x === "string") : []))];
@@ -361,7 +362,7 @@
     if (!HAS_MODE.has(it.kind)) return "";
     if (it.mode === "group") return '<span class="tag grp">Group</span>';
     if (it.mode === "individual") return '<span class="tag ind">Individual</span>';
-    return '<span class="tag unk" title="Not yet specified in a loaded syllabus">TBD</span>';
+    return '<span class="tag unk" title="Group or individual not decided yet">TBD</span>';
   }
   function coursePill(id) { const c = courseInfo(id); return '<span class="pill" style="--c:' + c.color + '">' + esc(c.code) + "</span>"; }
   function linksHtml(it) {
@@ -436,7 +437,8 @@
       '<div class="when">' + when + "</div>" +
       '<div class="coursecell">' + coursePill(it.course) + '<span class="metaflat">' + typeTag(it) + modeTag(it) + reqTag(it) + "</span></div>" +
       '<div class="typecell">' + typeTag(it) + "</div>" +
-      '<div class="title"><div class="t">' + esc(it.title) + (it.verify ? ' <span class="verify" title="' + esc(it.verify) + '">⚠ verify</span>' : "") + "</div>" +
+      '<div class="title"><div class="t">' + esc(it.title) + (it.verify ? ' <span class="verify" title="' + esc(it.verify) + '">⚠ verify</span>' : "") +
+      (notes[it.id] ? ' <span class="has-note" title="You have a note on this">📝</span>' : "") + "</div>" +
       (subline(it) ? '<div class="sub">' + esc(subline(it)) + "</div>" : "") +
       (it.links && it.links.length ? '<div class="links">' + linksHtml(it) + "</div>" : "") + "</div>" +
       '<div class="pts" title="Share of the course grade">' + pts + "</div>" +
@@ -541,7 +543,8 @@
         const isDue = !e.bundle && KINDS[e.item.kind].due;
         const label = chipLabel(e);
         h += '<button class="chip' + (isDue ? " due" : "") + (entryDone(e) ? " done" : "") + '" style="--c:' + c.color + '" data-chip="' + ref + '"' +
-          ' aria-label="' + esc(c.code + " " + label) + '"><span class="cc">' + esc(courseNum(e.course || e.item.course)) + '</span><span class="ct">' + esc(label) + "</span></button>";
+          ' aria-label="' + esc(c.code + " " + label) + '"><span class="cc">' + esc(courseNum(e.course || e.item.course)) + '</span><span class="ct">' + esc(label) + "</span>" +
+          ((e.bundle ? e.items.some((i) => notes[i.id]) : notes[e.item.id]) ? '<span class="cn" title="You have a note">📝</span>' : "") + "</button>";
       });
       if (entries.length > MAX) {
         const ref = "d" + di;
@@ -606,6 +609,50 @@
   }
 
   // ---------- details modal ----------
+  // Private per-student notes on any entry (autosaved; see the "input" listener below).
+  function myNotesHtml(it) {
+    return '<div class="my-notes"><label for="myNote">📝 My notes <small>only you can see these</small></label>' +
+      '<textarea id="myNote" data-note="' + esc(it.id) + '" maxlength="2000" rows="3" placeholder="Jot anything: who\'s doing which part, questions for the TA, page numbers…">' + esc(notes[it.id] || "") + "</textarea>" +
+      '<span class="note-status" aria-live="polite"></span></div>';
+  }
+
+  // Maintainer: edit an imported item in place (saved for everyone, undoable in Manage courses).
+  const unresolved = (it) => (HAS_MODE.has(it.kind) && !it.mode) || (KINDS[it.kind].due && it.points == null) || !!it.verify || !it.date;
+  function adminEditHtml(it) {
+    if (ME.role !== "admin" || !courseById[it.course] || !it.type) return "";
+    const k = KINDS[it.kind];
+    const opt = (v, label, cur) => '<option value="' + v + '"' + (cur === v ? " selected" : "") + ">" + label + "</option>";
+    let f = '<details class="admin-edit"' + (unresolved(it) ? " open" : "") + '><summary>✏️ Edit for everyone <small>(maintainer)</small>' +
+      (unresolved(it) ? ' <span class="tag unk">needs a decision</span>' : "") + "</summary>" +
+      '<form class="meet-form" data-item-edit="' + esc(it.id) + '">' +
+      '<label>Title<input name="title" maxlength="200" value="' + esc(it.title) + '" required></label>';
+    if (HAS_MODE.has(it.kind)) f += '<label>Group or individual<select name="mode">' + opt("", "Not yet specified", it.mode || "") + opt("individual", "Individual", it.mode || "") + opt("group", "Group", it.mode || "") + "</select></label>";
+    if (k.due) f += '<label>Points <small>(% of the course grade; blank = not specified)</small><input name="points" type="number" min="0" max="100" step="0.01" value="' + (it.points != null ? it.points : "") + '"></label>';
+    if (HAS_REQ.has(it.kind)) f += '<label>Requirement<select name="required">' + opt("true", "Required", String(it.required !== false)) + opt("false", "Optional", String(it.required !== false)) + "</select></label>";
+    f += '<div class="grid2f"><label>Date <small>(blank = TBA)</small><input type="date" name="date" value="' + esc(it.date || "") + '"></label>' +
+      '<label>Time <small>(ET)</small><input type="time" name="time" value="' + esc(it.time || "") + '"></label></div>' +
+      '<label>Note for everyone<textarea name="notes" rows="2" maxlength="1000">' + esc(it.notes || "") + "</textarea></label>";
+    if (it.verify) f += '<label class="confirm-row"><input type="checkbox" name="confirmed"> Confirmed: remove the ⚠ "' + esc(it.verify) + '" flag</label>';
+    else f += '<label>⚠ Flag for checking later <small>(optional)</small><input name="verify" maxlength="500" placeholder="e.g. Waiting for the professor to say group or individual"></label>';
+    f += '<div class="pv-actions"><button class="btn" type="submit">Save for everyone</button><span class="form-msg"></span></div></form></details>';
+    return f;
+  }
+  function readItemEdit(f, it) {
+    const changes = {};
+    const val = (n) => f.elements[n] ? f.elements[n].value : undefined;
+    const put = (k, v) => { if (v !== undefined && v !== (it[k] == null ? null : it[k])) changes[k] = v; };
+    put("title", val("title").trim());
+    if (f.elements.mode) put("mode", val("mode") || null);
+    if (f.elements.points) put("points", val("points") === "" ? null : Number(val("points")));
+    if (f.elements.required) put("required", val("required") === "true");
+    put("date", val("date") || null);
+    put("time", val("time") || null);
+    put("notes", val("notes").trim() || null);
+    if (f.elements.confirmed && f.elements.confirmed.checked) changes.verify = null;
+    if (f.elements.verify && val("verify").trim()) changes.verify = val("verify").trim();
+    return changes;
+  }
+
   function teamDetailHtml(it) {
     const t = teams.find((x) => x.id === it.teamId) || {};
     const m = (t.meetings || []).find((x) => x.id === it.meetingId) || {};
@@ -616,6 +663,7 @@
     let h = '<div style="--c:' + esc(t.color) + '"><h3 id="modal-title">' + esc(it.title) + "</h3>";
     h += '<dl class="dl">' + rows.map((r) => "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>").join("") + "</dl>";
     if (it.notes) h += '<div class="note">' + esc(it.notes) + "</div>";
+    h += myNotesHtml(it);
     h += '<div class="pv-actions">' + (it.weekly ? '<button class="btn btn-ghost" data-skip="' + it.meetingId + ":" + it.date + '">Skip just this date</button>' : "") +
       '<button class="btn btn-ghost" data-meet-edit="' + it.meetingId + '">Edit meeting</button>' +
       '<button class="btn btn-ghost" data-goto-teams>Open Teams</button></div>';
@@ -655,6 +703,8 @@
       h += '<label class="done-toggle' + (on ? " on" : "") + '"><input type="checkbox" class="chk" data-done="' + esc(it.id) + '"' + (on ? " checked" : "") + "> " +
         (on ? "Completed. Uncheck to mark it not done." : "Mark as complete") + "</label>";
     }
+    h += myNotesHtml(it);
+    h += adminEditHtml(it);
     return h + "</div>";
   }
   function bundleHtml(e) {
@@ -693,7 +743,7 @@
     $("#modal").hidden = false;
     $(".modal-x").focus();
   }
-  function closeModal() { $("#modal").hidden = true; modalCtx = null; }
+  function closeModal() { const wasOpen = !$("#modal").hidden; $("#modal").hidden = true; modalCtx = null; if (wasOpen) render(); }
   $("#modal").addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeModal(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#modal").hidden) closeModal(); });
 
@@ -979,9 +1029,43 @@
     }
   });
 
+  let noteTimer = null;
+  document.addEventListener("input", (e) => {
+    const t = e.target;
+    if (!t.matches("textarea[data-note]")) return;
+    const id = t.dataset.note, v = t.value;
+    if (v.trim()) notes[id] = v; else delete notes[id];
+    const st = t.parentElement.querySelector(".note-status");
+    st.textContent = "Saving…";
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => {
+      api("PUT", "/api/me/notes", { itemId: id, note: v })
+        .then(() => { st.textContent = "Saved"; })
+        .catch((x) => { st.textContent = x.needsLogin ? "Signed out. Reload to sign in." : "Couldn't save. Check your connection."; });
+    }, 700);
+  });
+
   document.addEventListener("submit", async (e) => {
     const f = e.target;
     const msgEl = f.querySelector(".form-msg");
+    if (f.matches("[data-item-edit]")) {
+      e.preventDefault();
+      const it = itemById[f.dataset.itemEdit];
+      const changes = readItemEdit(f, it);
+      if (!Object.keys(changes).length) { if (msgEl) { msgEl.textContent = "Nothing changed."; msgEl.className = "form-msg"; } return; }
+      try {
+        const r = await api("POST", "/api/admin/items/edit", { courseId: it.course, itemId: it.id, changes });
+        // Update both the course record and the planner item, then re-sort and redraw.
+        const src = courseById[it.course].items.find((x) => x.id === it.id);
+        ["title", "date", "time", "points", "mode", "required", "notes", "verify"].forEach((k) => {
+          if (r.item[k] == null) { delete src[k]; delete it[k]; } else { src[k] = r.item[k]; it[k] = r.item[k]; }
+        });
+        indexItems();
+        render();
+        toast("Saved for everyone. You can undo it in Manage courses.");
+      } catch (x) { if (msgEl) { msgEl.textContent = x.message; msgEl.className = "form-msg err"; } }
+      return;
+    }
     const fail = (x) => { if (msgEl) { msgEl.textContent = x.message; msgEl.className = "form-msg err"; } };
     if (f.matches("[data-team-create]")) {
       e.preventDefault();
@@ -1081,12 +1165,29 @@
   window.EMBA_APP = {
     items, itemById, courseById, courseInfo, courseNum, KINDS, todayIso, done, facultyFor, REG,
     fmtDate, fmtDow, fmtTime, fmtPts, parseDate, iso,
-    openItem: (id) => { if (itemById[id]) openModal({ item: itemById[id] }); }
+    openItem: (id) => { if (itemById[id]) openModal({ item: itemById[id] }); },
+    notes,
+    /** Save this student's note on an item ("append" adds a line; "replace" overwrites). */
+    saveNote: async (id, text, mode) => {
+      if (!itemById[id]) throw new Error("No planner item with id " + id);
+      const before = notes[id] || "";
+      const next = mode === "replace" || !before ? text.trim() : before.replace(/\s+$/, "") + "\n" + text.trim();
+      if (next.length > 2000) throw new Error("That would make the note longer than 2,000 characters.");
+      await api("PUT", "/api/me/notes", { itemId: id, note: next });
+      if (next) notes[id] = next; else delete notes[id];
+      if ($("#modal").hidden) render();
+      return next;
+    }
   };
 
   const lastUpdate = [D.program.updated, D.coursesUpdated].filter(Boolean).sort().pop();
   $("#updated").textContent = "Schedule data last updated " + fmtDate(lastUpdate) + ", " + lastUpdate.slice(0, 4) + ".";
   renderFilters();
   render();
+  const itemParam = new URLSearchParams(location.search).get("item");
+  if (itemParam && itemById[itemParam]) {
+    history.replaceState(null, "", location.pathname);
+    openModal({ item: itemById[itemParam] });
+  }
   window.dispatchEvent(new Event("emba:ready"));
 })();

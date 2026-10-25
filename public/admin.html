@@ -7,13 +7,13 @@
   <meta name="theme-color" content="#0f1641">
   <link rel="icon" type="image/png" href="assets/icons/favicon-64.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
-  <title>Manage Courses</title>
+  <title>Manage Courses · Unofficial EMBA Planner</title>
   <meta name="description" content="Maintainer page for the EMBA Planner: add, update, remove, or undo course data.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=2026-10-25p">
-  <link rel="stylesheet" href="assets/admin.css?v=2026-10-25p">
+  <link rel="stylesheet" href="assets/styles.css?v=2026-10-25s">
+  <link rel="stylesheet" href="assets/admin.css?v=2026-10-25s">
 </head>
 <body>
   <header class="masthead">
@@ -24,7 +24,7 @@
       </div>
       <div class="brand-sub">
         <span class="brand-program">Manage courses</span>
-        <span class="brand-cohort">EMBA Planner · maintainer only · <a href="./" style="color:inherit">back to planner</a></span>
+        <span class="brand-cohort">Unofficial EMBA Planner · maintainer only · <a href="./" style="color:inherit">back to planner</a></span>
       </div>
     </div>
   </header>
@@ -83,6 +83,12 @@
       </section>
 
       <section class="card">
+        <h2>Open questions</h2>
+        <p class="muted">Items still waiting on a decision: group or individual not set, no point value, no date, or a ⚠ verify flag. Open one to edit it for everyone.</p>
+        <div id="openQs"></div>
+      </section>
+
+      <section class="card">
         <div class="card-head"><h2>Courses in the planner</h2><button class="btn btn-ghost btn-sm" id="refreshBtn">Refresh</button></div>
         <div id="courseList"></div>
       </section>
@@ -101,9 +107,9 @@
     </div>
   </main>
 
-  <footer class="foot">Published changes show up in the planner immediately.</footer>
+  <footer class="foot">Published changes show up in the planner immediately. <span class="credit">Created by Dr. BMo · EMBA ’28</span></footer>
 
-  <script src="assets/data.js?v=2026-10-25p"></script>
-  <script type="module" src="assets/admin.js?v=2026-10-25p"></script>
+  <script src="assets/data.js?v=2026-10-25s"></script>
+  <script type="module" src="assets/admin.js?v=2026-10-25s"></script>
 </body>
 </html>

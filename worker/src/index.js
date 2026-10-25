@@ -53,6 +53,7 @@ async function route(request, env, ctx, user, path) {
   if (path === "/api/me/done" && M === "PUT") return await me.setDone(request, env, user);
   if (path === "/api/me/done/import" && M === "POST") return await me.importDone(request, env, user);
   if (path === "/api/me/courses" && M === "PUT") return await me.setMyCourses(request, env, user);
+  if (path === "/api/me/notes" && M === "PUT") return await me.setNote(request, env, user);
   if (path === "/api/me/cal-token" && M === "POST") return await me.resetCalToken(env, user);
 
   if (path === "/api/teams" && M === "GET") return await teams.myTeams(env, user);
@@ -79,6 +80,7 @@ async function route(request, env, ctx, user, path) {
     if ((m = path.match(/^\/api\/admin\/inbox\/([a-z0-9-]+)$/)) && M === "GET") return await docs.inboxGet(m[1], env, user);
     if (path === "/api/admin/publish" && M === "POST") return await docs.publishCourse(request, env, user);
     if (path === "/api/admin/remove" && M === "POST") return await docs.removeCourse(request, env, user);
+    if (path === "/api/admin/items/edit" && M === "POST") return await docs.editItem(request, env, user);
     if (path === "/api/admin/history" && M === "GET") return await docs.history(env, user);
     if (path === "/api/admin/undo" && M === "POST") return await docs.undo(request, env, user);
     if (path === "/api/admin/tokens" && M === "GET") return await docs.listTokens(env, user);

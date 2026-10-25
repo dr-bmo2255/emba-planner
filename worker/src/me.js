@@ -1,16 +1,20 @@
-// The signed-in student's own state: name, checkmarks (synced across devices), my courses.
+// The signed-in student's own state: name, checkmarks (synced across devices), my courses, notes.
 import { HttpError, json, body, nowIso, randomToken, text } from "./util.js";
 import { publicUser } from "./auth.js";
 
+const NOTE_MAX = 2000;
+
 export async function me(env, user) {
-  const [done, settings] = await Promise.all([
+  const [done, settings, notes] = await Promise.all([
     env.DB.prepare("SELECT item_id FROM completions WHERE user_id = ?").bind(user.id).all(),
-    env.DB.prepare("SELECT my_courses FROM user_settings WHERE user_id = ?").bind(user.id).first()
+    env.DB.prepare("SELECT my_courses FROM user_settings WHERE user_id = ?").bind(user.id).first(),
+    env.DB.prepare("SELECT item_id, note FROM item_notes WHERE user_id = ?").bind(user.id).all()
   ]);
   return json({
     user: publicUser(user),
     done: done.results.map((r) => r.item_id),
-    myCourses: settings && settings.my_courses ? JSON.parse(settings.my_courses) : null
+    myCourses: settings && settings.my_courses ? JSON.parse(settings.my_courses) : null,
+    notes: Object.fromEntries(notes.results.map((r) => [r.item_id, r.note]))
   });
 }
 
@@ -25,6 +29,18 @@ export async function setDone(request, env, user) {
   const id = text(itemId, 80, "Item");
   if (done) await env.DB.prepare("INSERT OR IGNORE INTO completions (user_id, item_id, done_at) VALUES (?, ?, ?)").bind(user.id, id, nowIso()).run();
   else await env.DB.prepare("DELETE FROM completions WHERE user_id = ? AND item_id = ?").bind(user.id, id).run();
+  return json({ ok: true });
+}
+
+/** A student's private note on one item; an empty note deletes it. */
+export async function setNote(request, env, user) {
+  const { itemId, note } = await body(request);
+  const id = text(itemId, 80, "Item");
+  const n = String(note == null ? "" : note);
+  if (n.length > NOTE_MAX) throw new HttpError(400, "Notes can be up to " + NOTE_MAX + " characters.");
+  if (!n.trim()) await env.DB.prepare("DELETE FROM item_notes WHERE user_id = ? AND item_id = ?").bind(user.id, id).run();
+  else await env.DB.prepare("INSERT INTO item_notes (user_id, item_id, note, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, item_id) DO UPDATE SET note = excluded.note, updated_at = excluded.updated_at")
+    .bind(user.id, id, n, nowIso()).run();
   return json({ ok: true });
 }
 
