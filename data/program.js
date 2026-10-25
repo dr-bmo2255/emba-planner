@@ -10,7 +10,7 @@ EMBA.program = {
   // API key per viewer). Set it to your deployed worker/anthropic-proxy.js URL to give the
   // whole cohort "Ask Claude" with no key, e.g. "https://emba-planner-proxy.<you>.workers.dev".
   assistant: {
-    endpoint: "",
+    endpoint: "https://emba-planner-proxy.emba28.workers.dev",
     model: "claude-opus-5-5"
   },
 

@@ -4,6 +4,6 @@ compatibility_date = "2026-09-01"
 
 [vars]
 # Your GitHub Pages origin (no path). Add http://localhost:8028 while testing locally.
-ALLOWED_ORIGINS = "https://YOUR-GITHUB-USERNAME.github.io,http://localhost:8028"
+ALLOWED_ORIGINS = "https://dr-bmo2255.github.io,http://localhost:8028"
 MODEL = "claude-opus-5-5"
 MAX_TOKENS = "16000"
