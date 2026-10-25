@@ -1,18 +1,27 @@
 (async function () {
   "use strict";
 
-  // All data comes from data/*.json (see assets/data.js).
+  // A team invite link (?join=CODE) survives the sign-in screen.
+  const joinParam = new URLSearchParams(location.search).get("join");
+  try { if (joinParam) sessionStorage.setItem("emba28.join", joinParam); } catch (e) { /* storage blocked */ }
+  let joinCode = joinParam;
+  try { joinCode = joinCode || sessionStorage.getItem("emba28.join"); } catch (e) { /* storage blocked */ }
+
+  // Everything comes from the API for the signed-in student (see assets/data.js).
   let D;
   try {
     D = await window.loadPlannerData();
   } catch (e) {
+    if (e.needsLogin) { window.showSignIn({ join: joinCode }); return; }
     console.error("[planner] couldn't load data", e);
     document.getElementById("view").innerHTML = '<div class="empty">Couldn\'t load the schedule. Check your connection and reload.</div>';
     return;
   }
+  if (joinParam) history.replaceState(null, "", location.pathname);
+  const ME = D.me.user;
   const REG = D.program.courseRegistry;
-  const STORE_DONE = "emba28.done";
-  const STORE_PREFS = "emba28.prefs";
+  const STORE_DONE = "emba28.done";               // checkmarks saved in this browser before accounts
+  const STORE_PREFS = "emba28.prefs." + ME.id;
 
   const KINDS = {
     assignment: { label: "Assignments", tag: "Assignment", checkable: true, due: true },
@@ -22,7 +31,8 @@
     session: { label: "Class sessions", tag: "Class" },
     colloquium: { label: "Colloquium", tag: "Colloquium" },
     office: { label: "Office hrs & reviews", tag: "Office hrs" },
-    event: { label: "Program events", tag: "Event" }
+    event: { label: "Program events", tag: "Event" },
+    team: { label: "Team meetings", tag: "Team" }
   };
   const HAS_REQ = new Set(["assignment", "exam", "case", "reading"]);
   const HAS_MODE = new Set(["assignment", "exam"]);
@@ -62,7 +72,7 @@
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const courseInfo = (id) => REG[id] || { code: id, name: id, color: "#00356b" };
-  const courseNum = (id) => id === "PROGRAM" ? "EMBA" : id.replace("MGT", "");
+  const courseNum = (id) => id === "PROGRAM" ? "EMBA" : id.startsWith("TEAM-") ? "👥" : id.replace("MGT", "");
   const fmtPts = (p) => p == null ? "" : (Math.round(p * 100) / 100) + "%";
 
   // ---------- build the unified item list ----------
@@ -117,19 +127,44 @@
       (f.title ? ' <span style="color:var(--ink-3)">· ' + esc(f.title) + "</span>" : "") +
       (f.verify ? ' <span class="verify" title="' + esc(f.verify) + '">⚠ verify</span>' : "")).join("<br>");
   }
-  items.forEach((it) => { it.sortKey = (it.date || "9999-99-99") + " " + (it.time || "99:99") + " " + (KINDS[it.kind].due ? "0" : "1"); });
-  items.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-  const itemById = Object.fromEntries(items.map((i) => [i.id, i]));
-  const coursesWithItems = Object.keys(REG).filter((id) => items.some((i) => i.course === id));
+  let teams = D.teams || [];
+  const itemById = {};
+  const coursesWithItems = [];
+  // (Re)builds team meeting items, the item index, and the course/team list. Called again after
+  // any team change so the planner updates without a reload.
+  function indexItems() {
+    for (let i = items.length - 1; i >= 0; i--) if (items[i].kind === "team") items.splice(i, 1);
+    Object.keys(REG).filter((k) => k.startsWith("TEAM-")).forEach((k) => delete REG[k]);
+    teams.forEach((t) => { REG[PlannerTeams.teamKey(t)] = { code: t.name, name: "Team meetings", color: t.color, team: true }; });
+    PlannerTeams.items(teams).forEach((it) => items.push(it));
+    items.forEach((it) => { it.sortKey = (it.date || "9999-99-99") + " " + (it.time || "99:99") + " " + (KINDS[it.kind].due ? "0" : "1"); });
+    items.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    Object.keys(itemById).forEach((k) => delete itemById[k]);
+    items.forEach((i) => { itemById[i.id] = i; });
+    coursesWithItems.length = 0;
+    Object.keys(REG).filter((id) => REG[id].team || items.some((i) => i.course === id)).forEach((id) => coursesWithItems.push(id));
+  }
+  indexItems();
 
   // ---------- state ----------
-  const done = new Set(load(STORE_DONE, []));
+  const done = new Set(D.me.done);
+  const legacy = load(STORE_DONE, []);
+  if (legacy.length) {
+    // Checkmarks made in this browser before accounts existed: move them into the account once.
+    api("POST", "/api/me/done/import", { ids: legacy }).then(() => {
+      legacy.forEach((id) => done.add(id));
+      try { localStorage.removeItem(STORE_DONE); } catch (e) { /* storage blocked */ }
+      render();
+    }).catch(() => {});
+  }
+  let myCourses = D.me.myCourses;   // null = all courses
+  const defaultCourses = () => coursesWithItems.filter((id) => !myCourses || id === "PROGRAM" || id.startsWith("TEAM-") || myCourses.includes(id));
   const defaults = {
     view: "list",
     kinds: Object.keys(KINDS),
     req: ["required", "optional"],
     mode: ["individual", "group", "unspecified"],
-    courses: coursesWithItems.slice(),
+    courses: defaultCourses(),
     range: "cycle",
     hideDone: false,
     month: todayIso.slice(0, 7)
@@ -138,7 +173,7 @@
   ["kinds", "req", "mode", "courses"].forEach((k) => { prefs[k] = new Set(prefs[k]); });
   // A course added after the user last visited should show up, not stay hidden.
   const seen = new Set(load(STORE_PREFS, {}).knownCourses || []);
-  coursesWithItems.forEach((id) => { if (!seen.has(id)) prefs.courses.add(id); });
+  coursesWithItems.forEach((id) => { if (!seen.has(id) && defaultCourses().includes(id)) prefs.courses.add(id); });
   if (!["cycle", "upcoming", "all"].includes(prefs.range)) prefs.range = defaults.range;
   let query = "";
 
@@ -163,8 +198,21 @@
   }
   function setDone(id, on) {
     if (on) done.add(id); else done.delete(id);
-    save(STORE_DONE, [...done]);
     render();
+    api("PUT", "/api/me/done", { itemId: id, done: on }).catch((e) => {
+      // Couldn't save (offline?): put it back and say so.
+      if (on) done.delete(id); else done.add(id);
+      render();
+      toast(e.needsLogin ? "You've been signed out. Reload to sign in again." : "Couldn't save that checkmark. Check your connection.");
+    });
+  }
+  function toast(text) {
+    let t = document.getElementById("toast");
+    if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+    t.textContent = text;
+    t.classList.add("show");
+    clearTimeout(t._h);
+    t._h = setTimeout(() => t.classList.remove("show"), 4000);
   }
 
   function matches(it, opts) {
@@ -429,7 +477,7 @@
     }
     const it = e.item;
     if (it.kind === "colloquium") return "Colloquium";
-    if (it.kind === "session") return (it.time ? shortTime(it.time) + " " : "") + it.title;
+    if (it.kind === "session" || it.kind === "team") return (it.time ? shortTime(it.time) + " " : "") + it.title;
     return it.title.replace(/^Case write-up:\s*/, "").replace(/\s*\(.*\)$/, "");
   }
   function entryDone(e) { return e.bundle ? e.items.every((i) => done.has(i.id)) : done.has(e.item.id); }
@@ -548,7 +596,23 @@
   }
 
   // ---------- details modal ----------
+  function teamDetailHtml(it) {
+    const t = teams.find((x) => x.id === it.teamId) || {};
+    const m = (t.meetings || []).find((x) => x.id === it.meetingId) || {};
+    const rows = [["Team", '<span class="pill" style="--c:' + esc(t.color) + '">' + esc(t.name) + "</span>"],
+      ["When", esc(fmtLongDate(it.date)) + "<br>" + esc(fmtRange(it.time, it.endTime)) + " ET"]];
+    if (it.location) rows.push(["Where", PlannerTeams.locationHtml(it.location)]);
+    if (it.weekly) rows.push(["Repeats", esc(PlannerTeams.seriesText(m, TA))]);
+    let h = '<div style="--c:' + esc(t.color) + '"><h3 id="modal-title">' + esc(it.title) + "</h3>";
+    h += '<dl class="dl">' + rows.map((r) => "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>").join("") + "</dl>";
+    if (it.notes) h += '<div class="note">' + esc(it.notes) + "</div>";
+    h += '<div class="pv-actions">' + (it.weekly ? '<button class="btn btn-ghost" data-skip="' + it.meetingId + ":" + it.date + '">Skip just this date</button>' : "") +
+      '<button class="btn btn-ghost" data-meet-edit="' + it.meetingId + '">Edit meeting</button>' +
+      '<button class="btn btn-ghost" data-goto-teams>Open Teams</button></div>';
+    return h + "</div>";
+  }
   function detailHtml(it) {
+    if (it.kind === "team") return teamDetailHtml(it);
     const c = courseInfo(it.course);
     const k = KINDS[it.kind];
     const rows = [];
@@ -689,60 +753,69 @@
     if (op && itemById[op.dataset.open]) openModal({ item: itemById[op.dataset.open] });
   });
 
-  // ---------- Add to calendar (live subscription via the Worker's /calendar.ics) ----------
-  const FEED = ((D.program.assistant && D.program.assistant.endpoint) || "").replace(/\/$/, "") + "/calendar.ics";
+  // ---------- Add to calendar: private per-student feed links (/cal/<token>/...) ----------
+  const feedBase = () => location.origin + "/cal/" + ME.calToken;
+  const FEED = { get courses() { return feedBase() + "/courses.ics"; } };
   function feedQuery(scope) {
     if (scope !== "mine") return "";
     const q = new URLSearchParams();
-    const all = (k, list) => prefs[k].size === list.length;
-    if (!all("courses", coursesWithItems)) q.set("courses", [...prefs.courses].join(","));
-    if (!all("kinds", Object.keys(KINDS))) q.set("types", [...prefs.kinds].join(","));
+    const courseIds = coursesWithItems.filter((id) => !id.startsWith("TEAM-"));
+    const shown = [...prefs.courses].filter((id) => !id.startsWith("TEAM-"));
+    if (shown.length !== courseIds.length) q.set("courses", shown.join(","));
+    const kinds = [...prefs.kinds].filter((k) => k !== "team");
+    if (kinds.length !== Object.keys(KINDS).length - 1) q.set("types", kinds.join(","));
     if (prefs.req.size < 2) q.set("req", [...prefs.req].join(","));
     if (prefs.mode.size < 3) q.set("mode", [...prefs.mode].join(","));
     const qs = q.toString();
     return qs ? "?" + qs : "";
   }
-  function subLinks(query, label) {
-    const https = FEED + query;
-    const webcal = https.replace(/^https:/, "webcal:");
+  function subLinks(url, label) {
+    const webcal = url.replace(/^https?:/, "webcal:");
     const name = encodeURIComponent(label);
     return '<a class="sub-btn" href="' + esc(webcal) + '" title="Apple Calendar (iPhone, iPad, Mac)">Apple</a>' +
       '<a class="sub-btn" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/render?cid=' + encodeURIComponent(webcal) + '" title="Google Calendar">Google</a>' +
-      '<a class="sub-btn" target="_blank" rel="noopener" href="https://outlook.office.com/calendar/0/addfromweb?url=' + encodeURIComponent(https) + "&name=" + name + '" title="Outlook (Microsoft 365)">Outlook</a>' +
-      '<button class="sub-btn" data-copy="' + esc(https) + '" title="Copy the feed address">Copy link</button>';
+      '<a class="sub-btn" target="_blank" rel="noopener" href="https://outlook.office.com/calendar/0/addfromweb?url=' + encodeURIComponent(url) + "&name=" + name + '" title="Outlook (Microsoft 365)">Outlook</a>' +
+      '<button class="sub-btn" data-copy="' + esc(url) + '" title="Copy the feed address">Copy link</button>';
+  }
+  function subRow(id, label, sub, url) {
+    return '<div class="sub-row" style="--c:' + courseInfo(id).color + '"><i class="dd-swatch"></i>' +
+      '<div class="sub-name"><b>' + esc(label) + "</b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</div>" +
+      '<div class="sub-btns">' + subLinks(url, label) + "</div></div>";
   }
   function calendarHtml(scope) {
-    // Courses with a syllabus first, then schedule-only courses; each is its own calendar.
-    const list = coursesWithItems.filter((id) => id !== "PROGRAM")
+    const all = coursesWithItems.filter((id) => id !== "PROGRAM" && !id.startsWith("TEAM-"))
       .sort((a, b) => (courseById[a] ? 0 : 1) - (courseById[b] ? 0 : 1) || a.localeCompare(b));
-    const row = (id, label, sub) => '<div class="sub-row" style="--c:' + courseInfo(id).color + '"><i class="dd-swatch"></i>' +
-      '<div class="sub-name"><b>' + esc(label) + "</b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</div>" +
-      '<div class="sub-btns">' + subLinks("?courses=" + id, label) + "</div></div>";
+    const mine = all.filter((id) => myCourses ? myCourses.includes(id) : !!courseById[id]);
+    const others = all.filter((id) => !mine.includes(id));
+    const courseRow = (id) => subRow(id, courseNum(id) + " " + courseInfo(id).name,
+      courseById[id] ? "Classes, deadlines, readings" : "Class times only (syllabus not loaded yet)", FEED.courses + "?courses=" + id);
     const filtered = feedQuery("mine") !== "";
-    const combined = FEED + feedQuery(scope);
+    const combined = FEED.courses + feedQuery(scope);
     return '<div class="cal-modal"><h3 id="modal-title">Add to your calendar</h3>' +
-      '<p class="muted-p">Subscribe to each of <b>your</b> courses separately. Each one shows up as its own calendar you can color, hide, or remove, and it updates automatically when the syllabus or dates change.</p>' +
-      '<div class="sub-list">' +
-      list.map((id) => row(id, courseNum(id) + " " + courseInfo(id).name, courseById[id] ? "Classes, deadlines, readings" : "Class times only (syllabus not loaded yet)")).join("") +
-      row("PROGRAM", "Class weekends & program events", "Every class weekend, residence weeks, Global Network Week, Commencement") +
-      "</div>" +
-      '<details class="combined"><summary>Prefer one combined calendar?</summary>' +
+      '<p class="muted-p">Subscribe to each course and team separately. Each shows up as its own calendar you can color, hide, or remove, and it updates automatically. These links are personal; don\'t share them.</p>' +
+      "<h4>" + (myCourses ? "My courses" : "Courses") + ' <button class="linkish" data-acct="courses">Choose my courses</button></h4>' +
+      '<div class="sub-list">' + mine.map(courseRow).join("") +
+      subRow("PROGRAM", "Class weekends & program events", "Every class weekend, residence weeks, Global Network Week, Commencement", FEED.courses + "?courses=PROGRAM") + "</div>" +
+      (others.length ? '<details class="combined"><summary>Other courses (' + others.length + ")</summary><div class=\"sub-list\">" + others.map(courseRow).join("") + "</div></details>" : "") +
+      '<h4 id="calTeams">My teams</h4>' +
+      (teams.length ? '<div class="sub-list">' + teams.map((t) => subRow(PlannerTeams.teamKey(t), t.name, "Team meetings (members only)", feedBase() + "/team/" + t.id + ".ics")).join("") + "</div>"
+        : '<p class="muted-p">Join or create a team under <b>Teams</b> to subscribe to its meetings.</p>') +
+      '<details class="combined"><summary>Prefer one combined course calendar?</summary>' +
       '<div class="seg" role="radiogroup" aria-label="What to include">' +
       '<label><input type="radio" name="calscope" value="all"' + (scope !== "mine" ? " checked" : "") + "> Everything</label>" +
       '<label><input type="radio" name="calscope" value="mine"' + (scope === "mine" ? " checked" : "") + (filtered ? "" : " disabled") + "> Only what I'm showing" + (filtered ? "" : " (no filters set)") + "</label></div>" +
-      '<div class="sub-btns">' + subLinks(feedQuery(scope), "EMBA C28 Planner") + "</div>" +
+      '<div class="sub-btns">' + subLinks(combined, "EMBA C28 Planner") + "</div>" +
       '<p class="muted-p"><a href="' + esc(combined + (combined.includes("?") ? "&" : "?") + "download=1") + '">Download a one-time .ics file</a> (won\'t update).</p></details>' +
-      '<p class="muted-p">Calendar apps check for changes on their own schedule: Apple every few hours, Google about once a day. Your checkmarks stay in the planner. For personal Outlook.com, use <b>Copy link</b> and add it under "Subscribe from web".</p></div>';
+      '<p class="muted-p">Calendar apps check for changes on their own schedule: Apple every few hours, Google about once a day. Your checkmarks stay in the planner. If a link ever leaks, reset your links from the account menu.</p></div>';
   }
   $("#addToCal").addEventListener("click", () => openModal({ html: calendarHtml("all"), color: "var(--yale-blue)" }));
   $("#modal").addEventListener("change", (e) => {
     if (e.target.name === "calscope") {
       openModal({ html: calendarHtml(e.target.value), color: "var(--yale-blue)" });
-      const d = document.querySelector("#modal details.combined");
-      if (d) d.open = true;
+      document.querySelectorAll("#modal details.combined").forEach((d) => { if (d.querySelector("[name=calscope]")) d.open = true; });
     }
   });
-  $("#modal").addEventListener("click", (e) => {
+  document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-copy]");
     if (!b) return;
     const v = b.dataset.copy;
@@ -786,16 +859,200 @@
   }
 
 
+  // ---------- Teams ----------
+  let pendingJoin = null;
+  const TA = {
+    teams: () => teams, todayIso, fmtDate, fmtDow, fmtTime,
+    cycleEnd: () => cycle && cycle.end, pendingJoin: () => pendingJoin
+  };
+  async function reloadTeams() {
+    const before = new Set(coursesWithItems);
+    teams = (await api("GET", "/api/teams")).teams;
+    indexItems();
+    coursesWithItems.forEach((id) => { if (!before.has(id)) prefs.courses.add(id); }); // show new teams
+    renderFilters();
+    render();
+  }
+  const findTeam = (id) => teams.find((t) => t.id === id);
+  const findMeeting = (id) => { for (const t of teams) { const m = t.meetings.find((x) => x.id === id); if (m) return { t, m }; } return {}; };
+  function clearJoin() {
+    pendingJoin = null; joinCode = null;
+    try { sessionStorage.removeItem("emba28.join"); } catch (e) { /* storage blocked */ }
+  }
+  if (joinCode) {
+    api("GET", "/api/join/" + encodeURIComponent(joinCode)).then((r) => {
+      pendingJoin = r; prefs.view = "teams"; render();
+    }).catch((e) => { clearJoin(); toast(e.message); });
+  }
+  async function act(fn, okMsg) {
+    try { await fn(); await reloadTeams(); if (okMsg) toast(okMsg); return true; } catch (e) { toast(e.message); return false; }
+  }
+
+  document.addEventListener("click", async (e) => {
+    const t = e.target;
+    const d = (sel) => { const el = t.closest("[" + sel + "]"); return el && el.getAttribute(sel); };
+    let v;
+    if (t.closest("[data-goto-teams]")) { closeModal(); prefs.view = "teams"; render(); return; }
+    if (t.closest("[data-team-new]")) {
+      openModal({ color: "var(--yale-blue)", html: '<h3 id="modal-title">Create a team</h3><form data-team-create class="meet-form">' +
+        '<label>Team name<input name="name" maxlength="60" placeholder="e.g. Learning Team 7A" required></label>' +
+        '<div class="swatches">' + PlannerTeams.COLORS.map((c, i) => '<label><input type="radio" name="color" value="' + c + '"' + (i === 0 ? " checked" : "") + '><i style="background:' + c + '"></i></label>').join("") + "</div>" +
+        '<div class="pv-actions"><button class="btn" type="submit">Create team</button><span class="form-msg"></span></div></form>' });
+      return;
+    }
+    if (t.closest("[data-join-accept]")) {
+      const name = pendingJoin.team.name;
+      if (await act(() => api("POST", "/api/join/" + encodeURIComponent(joinCode)), "You joined " + name + ".")) clearJoin();
+      render();
+      return;
+    }
+    if (t.closest("[data-join-dismiss]")) { clearJoin(); render(); return; }
+    if ((v = d("data-meet-new"))) { openModal({ color: findTeam(v).color, html: PlannerTeams.meetingForm(TA, findTeam(v)) }); return; }
+    if ((v = d("data-meet-edit"))) { const f = findMeeting(v); if (f.m) openModal({ color: f.t.color, html: PlannerTeams.meetingForm(TA, f.t, f.m) }); return; }
+    if ((v = d("data-meet-del"))) {
+      if (confirm("Delete this meeting" + (findMeeting(v).m && findMeeting(v).m.kind === "weekly" ? " and all its repeats" : "") + "?")) await act(() => api("DELETE", "/api/meetings/" + v), "Meeting deleted.");
+      return;
+    }
+    if ((v = d("data-skip"))) {
+      const [mid, date] = v.split(":");
+      closeModal();
+      await act(() => api("POST", "/api/meetings/" + mid + "/skip", { date, skip: true }), "Skipped " + fmtDate(date) + ". You can restore it on the Teams tab.");
+      return;
+    }
+    if ((v = d("data-unskip"))) {
+      const [mid, date] = v.split(":");
+      await act(() => api("POST", "/api/meetings/" + mid + "/skip", { date, skip: false }), "Restored " + fmtDate(date) + ".");
+      closeModal();
+      return;
+    }
+    if ((v = d("data-member-del"))) {
+      const [tid, uid] = v.split(":");
+      const who = findTeam(tid).members.find((m) => String(m.id) === uid);
+      if (confirm("Remove " + who.name + " from " + findTeam(tid).name + "?")) await act(() => api("DELETE", "/api/teams/" + tid + "/members/" + uid), "Removed " + who.name + ".");
+      return;
+    }
+    if ((v = d("data-team-leave"))) {
+      if (confirm("Leave " + findTeam(v).name + "? You'll need a new invite link to rejoin.")) await act(() => api("DELETE", "/api/teams/" + v + "/members/" + ME.id), "You left the team.");
+      return;
+    }
+    if ((v = d("data-team-del"))) {
+      if (confirm("Delete " + findTeam(v).name + " and all its meetings for everyone? This can't be undone.")) await act(() => api("DELETE", "/api/teams/" + v), "Team deleted.");
+      return;
+    }
+    if ((v = d("data-invite"))) {
+      const [tid, what] = v.split(":");
+      if (what === "off" && !confirm("Turn off the invite link? Nobody new can join until you make a new one.")) return;
+      await act(() => api("PATCH", "/api/teams/" + tid, { invite: what }), what === "off" ? "Invite link turned off." : "New invite link ready. The old one no longer works.");
+      return;
+    }
+    if ((v = d("data-team-rename"))) {
+      const name = prompt("New team name", findTeam(v).name);
+      if (name && name.trim()) await act(() => api("PATCH", "/api/teams/" + v, { name }), "Renamed.");
+      return;
+    }
+    if ((v = d("data-team-cal"))) {
+      openModal({ html: calendarHtml("all"), color: "var(--yale-blue)" });
+      const h = document.getElementById("calTeams");
+      if (h) h.scrollIntoView({ block: "start" });
+      return;
+    }
+    if ((v = d("data-acct"))) { acctAction(v); return; }
+  });
+
+  document.addEventListener("change", (e) => {
+    const f = e.target.closest("[data-meet-form]");
+    if (f && e.target.name === "kind") {
+      f.querySelector(".when-weekly").hidden = e.target.value !== "weekly";
+      f.querySelector(".when-once").hidden = e.target.value !== "once";
+    }
+  });
+
+  document.addEventListener("submit", async (e) => {
+    const f = e.target;
+    const msgEl = f.querySelector(".form-msg");
+    const fail = (x) => { if (msgEl) { msgEl.textContent = x.message; msgEl.className = "form-msg err"; } };
+    if (f.matches("[data-team-create]")) {
+      e.preventDefault();
+      try {
+        await api("POST", "/api/teams", { name: f.name.value, color: f.color.value });
+        await reloadTeams(); closeModal(); prefs.view = "teams"; render(); toast("Team created. Share its invite link with your teammates.");
+      } catch (x) { fail(x); }
+    }
+    if (f.matches("[data-meet-form]")) {
+      e.preventDefault();
+      const data = PlannerTeams.readForm(f);
+      const mid = f.dataset.meeting;
+      try {
+        await api(mid ? "PUT" : "POST", mid ? "/api/meetings/" + mid : "/api/teams/" + f.dataset.meetForm + "/meetings", data);
+        await reloadTeams(); closeModal(); toast(mid ? "Meeting updated." : "Meeting added.");
+      } catch (x) { fail(x); }
+    }
+    if (f.matches("[data-courses-form]")) {
+      e.preventDefault();
+      const picked = [...f.querySelectorAll("input[name=c]:checked")].map((x) => x.value);
+      const allIds = [...f.querySelectorAll("input[name=c]")].map((x) => x.value);
+      const next = picked.length === allIds.length ? null : picked;
+      try {
+        await api("PUT", "/api/me/courses", { courses: next });
+        myCourses = next;
+        prefs.courses = new Set(defaultCourses());
+        renderFilters(); render(); closeModal(); toast("My courses saved.");
+      } catch (x) { fail(x); }
+    }
+  });
+
+  // ---------- Account menu ----------
+  const initials = (ME.name || ME.email).split(/[\s.@]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  function renderAccount() {
+    const el = document.getElementById("acct");
+    if (!el) return;
+    el.innerHTML = '<button class="acct-btn" aria-haspopup="true" aria-expanded="false"><span class="acct-av">' + esc(initials) + '</span><span class="acct-name">' + esc(ME.name || ME.email) + "</span> ▾</button>" +
+      '<div class="acct-menu" hidden><div class="acct-who"><b>' + esc(ME.name || "") + "</b><span>" + esc(ME.email) + "</span></div>" +
+      '<button data-acct="courses">📚 My courses…</button><button data-acct="teams">👥 Teams</button><button data-acct="cal">📅 Add to calendar</button>' +
+      (ME.role === "admin" ? '<a href="admin.html">🛠 Manage courses</a>' : "") +
+      '<button data-acct="caltoken">🔄 Reset my calendar links</button><button data-acct="logout">↩︎ Sign out</button></div>';
+    const btn = el.querySelector(".acct-btn"), menu = el.querySelector(".acct-menu");
+    btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute("aria-expanded", String(!menu.hidden)); });
+    document.addEventListener("click", (e) => { if (!el.contains(e.target)) { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); } });
+  }
+  async function acctAction(a) {
+    const menu = document.querySelector(".acct-menu");
+    if (menu) menu.hidden = true;
+    if (a === "teams") { closeModal(); prefs.view = "teams"; render(); }
+    if (a === "cal") openModal({ html: calendarHtml("all"), color: "var(--yale-blue)" });
+    if (a === "courses") {
+      const ids = Object.keys(REG).filter((id) => /^MGT\d{3}$/.test(id)).sort((x, y) => (courseById[x] ? 0 : 1) - (courseById[y] ? 0 : 1) || x.localeCompare(y));
+      const box = (id) => '<label class="dd-opt"><input type="checkbox" name="c" value="' + id + '"' + (!myCourses || myCourses.includes(id) ? " checked" : "") + '><i class="dd-swatch" style="background:' + courseInfo(id).color + '"></i><span class="dd-label">' + esc(courseNum(id) + " " + courseInfo(id).name) + "</span></label>";
+      openModal({ color: "var(--yale-blue)", html: '<h3 id="modal-title">My courses</h3><p class="muted-p">Pick the courses you\'re taking. The planner, the cards, and your calendar choices start from these. In the second year, when not everyone takes the same electives, this keeps your view clean.</p>' +
+        '<form data-courses-form><div class="dd-quick"><button type="button" onclick="this.form.querySelectorAll(\'input[name=c]\').forEach(x=>x.checked=true)">Select all</button><button type="button" onclick="this.form.querySelectorAll(\'input[name=c]\').forEach(x=>x.checked=false)">Clear</button></div>' +
+        '<div class="courses-pick">' + ids.map(box).join("") + "</div>" +
+        '<div class="pv-actions"><button class="btn" type="submit">Save</button><span class="form-msg"></span></div></form>' });
+    }
+    if (a === "caltoken") {
+      if (!confirm("Make new calendar links? Your current subscriptions stop updating, and you'll subscribe again with the new links.")) return;
+      try { ME.calToken = (await api("POST", "/api/me/cal-token")).calToken; toast("New calendar links are ready under Add to calendar."); } catch (e) { toast(e.message); }
+    }
+    if (a === "logout") {
+      try { await api("POST", "/api/auth/logout"); } catch (e) { /* signed out anyway */ }
+      try { await caches.delete("api"); } catch (e) { /* no cache API */ }
+      location.href = "/";
+    }
+  }
+  renderAccount();
+
   // ---------- main render ----------
   function render() {
     persist();
     hideTip();
     document.querySelectorAll(".views button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === prefs.view)));
     renderSummary();
+    $("#filters").hidden = prefs.view === "teams"; // course filters don't apply to Teams
     let html;
     if (prefs.view === "calendar") {
       // The calendar always shows the full month; "Upcoming only" applies to the list views.
       html = renderCalendar(items.filter((it) => matches(it, { ignoreRange: true })));
+    } else if (prefs.view === "teams") {
+      html = PlannerTeams.view(TA);
     } else {
       const list = items.filter((it) => matches(it));
       html = prefs.view === "course" ? renderByCourse(list) : renderList(list);

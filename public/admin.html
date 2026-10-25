@@ -12,8 +12,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=2026-10-25n">
-  <link rel="stylesheet" href="assets/admin.css?v=2026-10-25n">
+  <link rel="stylesheet" href="assets/styles.css?v=2026-10-25o">
+  <link rel="stylesheet" href="assets/admin.css?v=2026-10-25o">
 </head>
 <body>
   <header class="masthead">
@@ -31,13 +31,8 @@
 
   <main class="wrap admin">
     <section class="card" id="lockCard">
-      <h2>Unlock</h2>
-      <p class="muted">Only the planner's maintainer can change course data. Everyone else sees the planner read-only.</p>
-      <form id="lockForm" class="row-form">
-        <input type="password" id="passcode" placeholder="Admin passcode" autocomplete="current-password" aria-label="Admin passcode">
-        <button class="btn" type="submit">Unlock</button>
-      </form>
-      <p id="lockMsg" class="msg"></p>
+      <h2>Manage courses</h2>
+      <p id="lockMsg" class="msg">Checking your account…</p>
     </section>
 
     <div id="adminBody" hidden>
@@ -75,11 +70,15 @@
             <li>Open <b>Shortcuts</b> → tap <b>+</b> → name it <b>Add to EMBA Planner</b>.</li>
             <li>Tap the <b>ⓘ</b> (Details) button → turn on <b>Show in Share Sheet</b> → under "Receive", choose <b>PDFs</b> only.</li>
             <li>Add the action <b>Get Contents of URL</b>. Set the URL to:<br><code id="shortcutUrl"></code><br>
-              Tap <b>Show More</b>: Method <b>POST</b>; Headers: add <code>x-admin-passcode</code> = <i>your passcode</i>, and <code>x-filename</code> = the <b>Shortcut Input → Name</b> variable; Request Body <b>File</b> = <b>Shortcut Input</b>.</li>
+              Tap <b>Show More</b>: Method <b>POST</b>; Headers: add <code>Authorization</code> = <code>Bearer </code> followed by your shortcut key (make one below), and <code>x-filename</code> = the <b>Shortcut Input → Name</b> variable; Request Body <b>File</b> = <b>Shortcut Input</b>.</li>
             <li>Add the action <b>Open URLs</b>. It uses the result of the previous step automatically.</li>
             <li>Done. To use it: in Canvas, open the syllabus → <b>Share</b> (or "Open in…") → <b>Add to EMBA Planner</b>. This page opens with the file loaded.</li>
           </ol>
-          <p class="muted">Files sent this way are stored privately for 7 days, then deleted automatically. Your passcode lives only inside the shortcut on your phone.</p>
+          <h3>Shortcut keys</h3>
+          <p class="muted">A shortcut key lets the Shortcut upload as you. It's shown once; paste it into the Shortcut, then it lives only on your phone. Delete it here if the phone is lost.</p>
+          <div id="tokens"></div>
+          <button class="btn btn-ghost btn-sm" id="newToken">Make a shortcut key</button>
+          <p class="muted">Files sent this way are stored privately for 7 days, then deleted automatically.</p>
         </details>
       </section>
 
@@ -89,16 +88,22 @@
       </section>
 
       <section class="card">
+        <h2>Teams</h2>
+        <p class="muted">Every team in the class. Teams are private to their members; as maintainer you can see names and sizes and remove a team if needed.</p>
+        <div id="teamList"></div>
+      </section>
+
+      <section class="card">
         <h2>Recent changes</h2>
-        <p class="muted">Every change is saved in the project's history. <b>Undo</b> puts that course's data back to how it was right before the change.</p>
+        <p class="muted">Every change is saved. <b>Undo</b> puts that course's data back to how it was right before the change, and shows up for everyone right away.</p>
         <div id="history"></div>
       </section>
     </div>
   </main>
 
-  <footer class="foot">Changes go live on the planner about a minute after you publish (GitHub Pages rebuild).</footer>
+  <footer class="foot">Published changes show up in the planner immediately.</footer>
 
-  <script src="assets/data.js?v=2026-10-25n"></script>
-  <script type="module" src="assets/admin.js?v=2026-10-25n"></script>
+  <script src="assets/data.js?v=2026-10-25o"></script>
+  <script type="module" src="assets/admin.js?v=2026-10-25o"></script>
 </body>
 </html>

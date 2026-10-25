@@ -1,45 +1,37 @@
-# Claude proxy for "Ask the Planner"
+# EMBA Planner Worker
 
-Without this, the chat uses built-in answers, and anyone can add their own Anthropic API key in
-the chat's ⚙ Settings. With it, everyone who opens the planner gets Claude answers with no key,
-billed to the maintainer's Anthropic account.
+Serves the planner (`../public`) and its API from one origin, with a D1 database.
 
-## Deploy (about 5 minutes, free Cloudflare account)
+## Local development
 
 ```bash
 cd worker
-npx wrangler login
-npx wrangler secret put ANTHROPIC_API_KEY     # paste your key when prompted
-# edit wrangler.toml: set ALLOWED_ORIGINS to your GitHub Pages origin
-npx wrangler deploy
+npm install
+npx wrangler d1 migrations apply DB --local
+python3 ../tools/seed_db.py && npx wrangler d1 execute DB --local --file seed.sql
+npx wrangler dev        # http://localhost:8787
 ```
 
-Wrangler prints a URL like `https://emba-planner-proxy.<you>.workers.dev`. Put it in
-`data/program.json`:
+`.dev.vars` (git-ignored) holds local-only settings: `DEV_SHOW_CODES="1"` shows sign-in codes on screen
+instead of emailing them, and `ADMIN_EMAILS="test.admin@yale.edu"` makes that test account the admin.
+Add `ANTHROPIC_API_KEY=...` there to try the chat and syllabus extraction locally.
 
-```js
-assistant: { endpoint: "https://emba-planner-proxy.<you>.workers.dev", model: "claude-opus-5-5" }
-```
+## Production settings
 
-## Cost and safety
+| Setting | Where | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | secret | Chat and syllabus extraction |
+| `RESEND_API_KEY` | secret | Sends sign-in codes (resend.com) |
+| `ADMIN_EMAILS` | wrangler.toml | Maintainer accounts (comma-separated @yale.edu) |
+| `EMAIL_MODE` / `EMAIL_FROM` | wrangler.toml | `resend` and a sender on your verified domain |
+| D1 `database_id` | wrangler.toml | From `npx wrangler d1 create emba-planner` |
 
-- Each question sends the full planner (about 17K tokens) as a cached system prompt: roughly 8 cents
-  for the first question, then about a penny each for follow-ups within a few minutes (cache reads plus the answer).
-- Uses Claude Opus 5.5 at low effort. Change `MODEL` in `wrangler.toml` to use a different model.
-- Only your Pages origin can call it, the model and `max_tokens` are forced, and tools are
-  stripped. An origin check doesn't stop a determined person from calling it from a script,
-  so set a monthly spend limit in the Anthropic Console (Settings → Limits).
+Deploy: `npx wrangler d1 migrations apply DB --remote`, seed once with `--remote`, then `npx wrangler deploy`.
 
-## Manage courses, calendar feed, iPhone inbox
+## Security notes
 
-The same Worker also serves:
-- `GET /calendar.ics`: the public live calendar feed (optional filters `courses`, `types`, `req`, `mode`).
-- `/admin/*`: the maintainer-only Manage courses actions. Every request needs the `x-admin-passcode`
-  header. Publish, remove, and undo are commits to the GitHub repo.
-
-Two more secrets, set once:
-
-```bash
-npx wrangler secret put GITHUB_TOKEN     # fine-grained token: this repo only, Contents read/write
-npx wrangler secret put ADMIN_PASSCODE   # a long passphrase only the maintainer knows
-```
+- Sessions are HttpOnly, Secure, SameSite=Lax cookies; cross-site writes are refused.
+- Sign-in codes are stored hashed, expire in 10 minutes, allow 5 tries; requests are rate-limited.
+- Calendar feeds can't sign in, so each student's feed URLs carry a private, resettable token.
+- Teams are visible only to members (and the maintainer, who can remove a team).
+- The chat and extraction endpoints require a signed-in user, so the Anthropic key can't be used anonymously.

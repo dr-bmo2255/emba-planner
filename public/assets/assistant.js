@@ -1,11 +1,9 @@
 // "Ask the Planner" chat panel.
 // Two answer engines:
-//   1. Built-in: pattern-matches common questions against the planner data. No key, no network.
-//   2. Claude: free-form Q&A with the whole planner as context. Uses the shared proxy in
-//      EMBA.program.assistant.endpoint (worker/anthropic-proxy.js) if set, otherwise the
-//      viewer's own Anthropic API key saved in this browser.
+//   1. Built-in: pattern-matches common questions against the planner data. No network.
+//   2. Claude: free-form Q&A with the whole planner as context, through this site's own
+//      /v1/messages (the Worker adds the API key; only signed-in students can use it).
 const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.133.0/+esm";
-const KEY_STORE = "emba28.anthropicKey";
 const MODE_STORE = "emba28.chatMode";
 
 if (!window.EMBA_APP) await new Promise((r) => window.addEventListener("emba:ready", r, { once: true }));
@@ -58,7 +56,7 @@ const SUGGESTIONS = [
 let history = [];   // Claude conversation (messages array, assistant content kept verbatim)
 let busy = false;
 
-function claudeAvailable() { return !!(CFG.endpoint || load(KEY_STORE, "")); }
+function claudeAvailable() { return true; }
 function mode() {
   const m = load(MODE_STORE, "auto");
   if (m === "local" || !claudeAvailable()) return "local";
@@ -129,21 +127,12 @@ async function ask(q) {
 
 // ---------------------------------------------------------------- settings
 function renderSettings() {
-  const key = load(KEY_STORE, "");
   const m = load(MODE_STORE, "auto");
   $("#askSettings").innerHTML = `
     <h4>Answer with</h4>
     <label><input type="radio" name="askm" value="auto" ${m !== "local" ? "checked" : ""} ${claudeAvailable() ? "" : "disabled"}> Claude <small>(free-form questions)</small></label>
     <label><input type="radio" name="askm" value="local" ${m === "local" || !claudeAvailable() ? "checked" : ""}> Built-in answers <small>(no key, works offline)</small></label>
-    ${CFG.endpoint ? `<p class="ask-note ok">Claude is provided for the cohort by the planner maintainer. No key needed.</p>` : `
-    <h4>Your Anthropic API key <small>(optional)</small></h4>
-    <p class="ask-note">The key is stored only in this browser and sent only to Anthropic's API. Usage is billed to your Anthropic account. Don't use this on a shared computer.</p>
-    <div class="ask-keyrow">
-      <input type="password" id="askKey" placeholder="${key ? "Saved: ••••" + esc(key.slice(-4)) : "sk-ant-…"}" autocomplete="off">
-      <button class="btn" id="askKeySave" type="button">Save</button>
-      ${key ? `<button class="btn btn-ghost" id="askKeyForget" type="button">Forget</button>` : ""}
-    </div>
-    <p class="ask-note"><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Get a key ↗</a></p>`}`;
+    <p class="ask-note ok">Claude answers come through the planner itself. No key needed.</p>`;
 }
 $("#askSettingsBtn").addEventListener("click", () => {
   const s = $("#askSettings");
@@ -153,16 +142,6 @@ $("#askSettingsBtn").addEventListener("click", () => {
 $("#askSettings").addEventListener("change", (e) => {
   if (e.target.name === "askm") { store(MODE_STORE, e.target.value); renderMode(); }
 });
-$("#askSettings").addEventListener("click", (e) => {
-  if (e.target.id === "askKeySave") {
-    const v = $("#askKey").value.trim();
-    if (!v) return;
-    store(KEY_STORE, v); store(MODE_STORE, "auto"); client = null;
-    renderSettings(); renderMode();
-  }
-  if (e.target.id === "askKeyForget") { store(KEY_STORE, null); client = null; renderSettings(); renderMode(); }
-});
-
 // ---------------------------------------------------------------- shared formatting
 function itemLine(it) {
   const info = A.courseInfo(it.course);
@@ -347,10 +326,9 @@ let systemPrompt = null;
 async function getClient() {
   if (client) return client;
   const { default: Anthropic } = await import(SDK_URL);
-  client = CFG.endpoint
-    // The proxy swaps in the real key server-side; the SDK just needs a placeholder.
-    ? new Anthropic({ baseURL: CFG.endpoint.replace(/\/$/, ""), apiKey: "via-proxy", dangerouslyAllowBrowser: true })
-    : new Anthropic({ apiKey: load(KEY_STORE, ""), dangerouslyAllowBrowser: true });
+  // Same-origin: the session cookie goes along and the Worker swaps in the real key;
+  // the SDK just needs a placeholder.
+  client = new Anthropic({ baseURL: location.origin, apiKey: "via-planner", dangerouslyAllowBrowser: true });
   client.__Anthropic = Anthropic;
   return client;
 }
@@ -477,7 +455,8 @@ async function askClaude(q) {
     history.pop();
     const An = client && client.__Anthropic;
     let msg = "Couldn't reach Claude. Showing built-in answers instead.";
-    if (An && err instanceof An.AuthenticationError) msg = CFG.endpoint ? "The cohort's Claude proxy rejected the request (check its API key)." : "Your API key was rejected. Check it in ⚙ Settings.";
+    if (An && err instanceof An.AuthenticationError) msg = "You've been signed out. Reload the page to sign in again.";
+    else if (An && err instanceof An.APIError && err.status === 503) msg = "Claude isn't set up yet. Showing built-in answers instead.";
     else if (An && err instanceof An.RateLimitError) msg = "Claude is rate-limited right now. Showing built-in answers instead.";
     else if (An && err instanceof An.APIError && err.status) msg = `Claude returned an error (${err.status}). Showing built-in answers instead.`;
     console.error("[assistant]", err);

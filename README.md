@@ -20,35 +20,26 @@ It's the combined view Canvas doesn't give us.
 
 > Unofficial, student-built. Always confirm dates on Canvas. Items marked **⚠ verify** need a human check.
 
+## Accounts, to-dos, and teams
+
+- **Sign in** with your @yale.edu email; you get a 6-digit code by email and stay signed in for 90 days.
+- **Your checkmarks and "My courses"** are saved to your account, so phone and laptop stay in sync.
+- **Teams**: anyone can create a team and share its invite link. Members add weekly / every-other-week
+  meetings (with skipped dates) or one-off meetings. Teams are private to their members.
+- **Calendars**: every course, the program calendar, and each of your teams is its own subscription.
+  The links are personal; reset them from the account menu if one leaks.
+
 ## Updating (maintainer only)
 
-Open `admin.html` on the live site (not linked from the planner), enter the passcode, then drop a
-syllabus PDF or paste a public course page. Claude extracts it, you review, and Publish commits it.
-Every change can be undone there. On iPhone, the "Add to EMBA Planner" Shortcut sends a PDF from
-Canvas's Share button straight to that page (setup steps are on the page).
+Sign in with the maintainer account and open **Manage courses** from the account menu (`/admin.html`).
+Drop a syllabus PDF or paste a public course page; Claude extracts it, you review, and Publish makes it
+live for everyone immediately. Every change can be undone there. On iPhone, the "Add to EMBA Planner"
+Shortcut sends a PDF from Canvas's Share button straight to that page (setup steps are on the page).
 
-Or, in Claude Code from this folder:
+Command line alternative, in Claude Code from this folder: `/add-syllabus syllabi/<file>.pdf`.
 
-```
-/add-syllabus syllabi/<the-syllabus>.pdf
-```
+## How it's built
 
-The skill extracts the text and links, writes `data/courses/MGTxxx.json`, registers it in `data/courses/index.json`,
-and lists anything it couldn't confirm. New master schedule from the EMBA office:
-
-```
-/add-syllabus syllabi/<schedule>.xlsx
-```
-
-## Turn on Claude for the whole cohort (optional)
-
-Deploy the Worker in `worker/` (see `worker/README.md`), then set `assistant.endpoint` in
-`data/program.json` to its URL. The same Worker serves the calendar feed and the Manage courses actions.
-
-## Publish on GitHub Pages
-
-1. Create a repo (e.g. `emba-planner`) and push this folder.
-2. Repo **Settings → Pages → Deploy from branch → `main` / root**.
-3. Share `https://<your-username>.github.io/emba-planner/` with the cohort.
-
-`syllabi/` is git-ignored so school PDFs and contact details never get published.
+One Cloudflare Worker (`worker/`) serves the site (`public/`) and its API, with a D1 database for
+accounts, course data (with undo history), checkmarks, and teams. See `CLAUDE.md` and `worker/README.md`.
+`syllabi/` is git-ignored so school PDFs never get published.

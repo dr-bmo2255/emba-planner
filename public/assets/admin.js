@@ -1,71 +1,53 @@
-// Manage courses: maintainer-only page. Every write goes through the Worker, which checks the
-// passcode and commits to GitHub; this page holds no GitHub or Anthropic credentials.
+// Manage courses: maintainer-only page (signed-in account with the admin role). Changes save to
+// the planner's database and show up for everyone immediately; every change can be undone.
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
-const E = await window.loadPlannerData();
-const ENDPOINT = (E.program.assistant && E.program.assistant.endpoint || "").replace(/\/$/, "");
-const REG = E.program.courseRegistry;
-const PASS_KEY = "emba28.adminPass";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
 const fmtDate = (d) => d ? new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "TBA";
 const fmtWhen = (iso) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-function getPass() { try { return sessionStorage.getItem(PASS_KEY) || ""; } catch (e) { return ""; } }
-function setPass(v) { try { v ? sessionStorage.setItem(PASS_KEY, v) : sessionStorage.removeItem(PASS_KEY); } catch (e) { /* blocked */ } }
 function msg(el, text, kind) { el.textContent = text || ""; el.className = "msg" + (kind ? " " + kind : ""); }
 
-async function api(path, body) {
-  const res = await fetch(ENDPOINT + "/admin/" + path, {
+/** Raw fetch to an admin endpoint (some return streams or PDFs, so callers read the body). */
+async function call(path, body) {
+  const res = await fetch("/api/" + path, {
     method: body ? "POST" : "GET",
-    headers: { "x-admin-passcode": getPass(), ...(body ? { "content-type": "application/json" } : {}) },
-    body: body ? JSON.stringify(body) : undefined
+    headers: body ? { "content-type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: "same-origin"
   });
-  if (res.status === 401) { setPass(""); lock("That passcode isn't right."); throw new Error("Wrong passcode."); }
-  if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error && (j.error.message || j.error) || "HTTP " + res.status); }
+  if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error || "HTTP " + res.status); }
   return res;
 }
 
-// ---------------------------------------------------------------- unlock
-function lock(text) {
-  $("#adminBody").hidden = true;
-  $("#lockCard").hidden = false;
-  msg($("#lockMsg"), text || "", text ? "err" : "");
+// ---------------------------------------------------------------- access
+let E, REG;
+try {
+  E = await window.loadPlannerData();
+  REG = E.program.courseRegistry;
+} catch (e) {
+  $("#lockMsg").innerHTML = e.needsLogin ? 'Please <a href="./">sign in to the planner</a> first, then come back here.' : esc(e.message);
+  throw e;
 }
-async function unlock() {
-  if (!ENDPOINT) { msg($("#lockMsg"), "No Worker endpoint is configured in data/program.js.", "err"); return; }
-  msg($("#lockMsg"), "Checking…");
-  try {
-    const r = await (await api("ping")).json();
-    const problems = [];
-    if (r.claude !== "ok") problems.push("Claude key: " + r.claude);
-    if (r.github !== "ok") problems.push("GitHub access: " + r.github);
-    $("#lockCard").hidden = true;
-    $("#adminBody").hidden = false;
-    if (problems.length) msg($("#extractMsg"), "Setup incomplete: " + problems.join("; "), "err");
-    loadCourses();
-    loadHistory();
-    loadInbox();
-  } catch (e) {
-    if (!/passcode/.test(e.message)) msg($("#lockMsg"), "Couldn't reach the Worker: " + e.message, "err");
-  }
+if (E.me.user.role !== "admin") {
+  $("#lockMsg").innerHTML = "Only the planner's maintainer can manage courses. <a href=\"./\">Back to the planner</a>";
+  throw new Error("not admin");
 }
-$("#lockForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  setPass($("#passcode").value.trim());
-  $("#passcode").value = "";
-  unlock();
-});
-if (getPass()) unlock();
+$("#lockCard").hidden = true;
+$("#adminBody").hidden = false;
+call("admin/status").then((r) => r.json()).then((r) => {
+  if (r.claude !== "ok") msg($("#extractMsg"), "Setup incomplete: Claude key " + r.claude + ".", "err");
+}).catch(() => {});
 
-// ---------------------------------------------------------------- iPhone share-sheet inbox
+// ---------------------------------------------------------------- iPhone share-sheet inbox + keys
 async function loadInbox() {
   const id = new URLSearchParams(location.search).get("inbox");
-  $("#shortcutUrl").textContent = ENDPOINT + "/admin/inbox";
+  $("#shortcutUrl").textContent = location.origin + "/api/inbox";
   if (!id) return;
   try {
-    const res = await api("inbox/" + id);
+    const res = await call("admin/inbox/" + id);
     const name = decodeURIComponent(res.headers.get("x-filename") || "syllabus.pdf");
     setFile(new File([await res.blob()], name, { type: "application/pdf" }));
     msg($("#extractMsg"), "📱 Received from your phone: " + name + ". Pick the course if you like, then tap Read with Claude.", "ok");
@@ -74,14 +56,32 @@ async function loadInbox() {
     msg($("#extractMsg"), e.message, "err");
   }
 }
+async function loadTokens() {
+  const { tokens } = await (await call("admin/tokens")).json();
+  $("#tokens").innerHTML = tokens.length ? tokens.map((t) => `<div class="hrow"><div class="hmsg">${esc(t.label)}<span>made ${esc(fmtWhen(t.created_at))}</span></div>
+    <button class="btn btn-danger btn-sm" data-token-del="${esc(t.ref)}">Delete</button></div>`).join("") : '<p class="muted">No shortcut keys yet.</p>';
+}
+$("#newToken").addEventListener("click", async () => {
+  const label = prompt("Name this key (e.g. Brian's iPhone)", "iPhone shortcut");
+  if (!label) return;
+  const { token } = await (await call("admin/tokens", { label })).json();
+  $("#tokens").insertAdjacentHTML("afterbegin", `<div class="warn-box"><b>Copy this key now. It won't be shown again.</b>
+    <div class="cal-copy" style="margin-top:6px"><input readonly value="${esc(token)}" aria-label="Shortcut key"><button class="btn btn-ghost btn-sm" data-copy-key="${esc(token)}">Copy</button></div>
+    In the Shortcut's Authorization header, enter: <code>Bearer ${esc(token.slice(0, 10))}…</code> (the whole key after "Bearer ").</div>`);
+  setTimeout(loadTokens, 60000);
+});
+$("#tokens").addEventListener("click", async (e) => {
+  const c = e.target.closest("[data-copy-key]");
+  if (c) { navigator.clipboard.writeText(c.dataset.copyKey).catch(() => {}); c.textContent = "Copied ✓"; return; }
+  const d = e.target.closest("[data-token-del]");
+  if (d && confirm("Delete this key? A Shortcut using it stops working.")) { await call("admin/tokens/delete", { ref: d.dataset.tokenDel }); loadTokens(); }
+});
 
 // ---------------------------------------------------------------- current courses
-let current = {}; // id -> course JSON as published on the site
+let current = {}; // id -> course JSON as stored in the database
 async function loadCourses() {
-  const get = (f) => fetch("data/courses/" + f, { cache: "no-cache" }).then((r) => r.ok ? r.json() : null);
-  const idx = (await get("index.json")) || { courses: [] };
-  const list = await Promise.all(idx.courses.map((id) => get(id + ".json")));
-  current = Object.fromEntries(list.filter(Boolean).map((c) => [c.id, c]));
+  const data = await (await call("data")).json();
+  current = Object.fromEntries(data.courses.map((c) => [c.id, c]));
   const sel = $("#courseHint");
   const keep = sel.value;
   sel.innerHTML = '<option value="">Detect automatically</option>' + Object.entries(REG).filter(([id]) => id !== "PROGRAM")
@@ -96,7 +96,7 @@ async function loadCourses() {
       <button class="btn btn-danger btn-sm" data-remove="${id}">Remove</button></div>`;
   }).join("")}</div>` : '<p class="muted">No course data yet.</p>';
 }
-$("#refreshBtn").addEventListener("click", () => { loadCourses(); loadHistory(); });
+$("#refreshBtn").addEventListener("click", () => { loadCourses(); loadHistory(); loadTeams(); });
 $("#courseList").addEventListener("click", async (e) => {
   const b = e.target.closest("[data-remove]");
   if (!b) return;
@@ -104,31 +104,43 @@ $("#courseList").addEventListener("click", async (e) => {
   if (!confirm(`Remove all syllabus data for ${c.code} ${c.name}?\n\nIts ${c.items.length} assignments and readings disappear from the planner (class times from the master schedule stay). You can undo this under Recent changes.`)) return;
   b.disabled = true;
   try {
-    await api("remove", { id });
-    delete current[id];
-    b.closest(".crow").remove();
-    flash(`Removed ${c.code}. The planner updates in about a minute.`);
-    loadHistory();
+    await call("admin/remove", { id });
+    flash(`Removed ${c.code}.`);
+    loadCourses(); loadHistory();
   } catch (err) { b.disabled = false; alert("Couldn't remove: " + err.message); }
+});
+
+// ---------------------------------------------------------------- teams overview
+async function loadTeams() {
+  const { teams } = await (await call("admin/teams")).json();
+  $("#teamList").innerHTML = teams.length ? teams.map((t) => `<div class="crow" style="--c:${esc(t.color)}"><i class="sw"></i>
+    <div class="cname"><b>${esc(t.name)}</b><span>${t.members} member${t.members === 1 ? "" : "s"} · made by ${esc(t.owner_name || t.owner_email || "?")} · ${esc(fmtWhen(t.created_at))}</span></div>
+    <button class="btn btn-danger btn-sm" data-team-del="${esc(t.id)}" data-name="${esc(t.name)}">Remove</button></div>`).join("") : '<p class="muted">No teams yet.</p>';
+}
+$("#teamList").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-team-del]");
+  if (!b || !confirm(`Remove the team "${b.dataset.name}" and all its meetings for everyone? This can't be undone.`)) return;
+  const res = await fetch("/api/teams/" + b.dataset.teamDel, { method: "DELETE", credentials: "same-origin" });
+  if (!res.ok) alert("Couldn't remove it."); else loadTeams();
 });
 
 // ---------------------------------------------------------------- history / undo
 async function loadHistory() {
   try {
-    const { commits } = await (await api("history")).json();
-    $("#history").innerHTML = commits.map((c, i) => `<div class="hrow"><div class="hmsg">${esc(c.message)}<span>${esc(fmtWhen(c.date))}${i === 0 ? " · latest" : ""}</span></div>
-      ${/^Initial|^EMBA Planner:/.test(c.message) ? "" : `<button class="btn btn-ghost btn-sm" data-undo="${c.sha}" data-msg="${esc(c.message)}">Undo</button>`}</div>`).join("") || '<p class="muted">No changes yet.</p>';
+    const { changes } = await (await call("admin/history")).json();
+    $("#history").innerHTML = changes.map((c, i) => `<div class="hrow"><div class="hmsg">${esc(c.message)}<span>${esc(fmtWhen(c.created_at))} · ${esc(c.name || c.email || "")}${i === 0 ? " · latest" : ""}</span></div>
+      <button class="btn btn-ghost btn-sm" data-undo="${c.id}" data-msg="${esc(c.message)}">Undo</button></div>`).join("") || '<p class="muted">No changes yet.</p>';
   } catch (e) { $("#history").innerHTML = `<p class="msg err">${esc(e.message)}</p>`; }
 }
 $("#history").addEventListener("click", async (e) => {
   const b = e.target.closest("[data-undo]");
   if (!b) return;
-  if (!confirm(`Undo "${b.dataset.msg}"?\n\nThe course files it changed go back to how they were right before it. Any later edits to those same courses are replaced too.`)) return;
+  if (!confirm(`Undo "${b.dataset.msg}"?\n\nThat course goes back to how it was right before this change. Any later edits to the same course are replaced too.`)) return;
   b.disabled = true;
   try {
-    await api("undo", { sha: b.dataset.undo });
-    flash("Undone. The planner updates in about a minute.");
-    setTimeout(() => { loadCourses(); loadHistory(); }, 1500);
+    await call("admin/undo", { changeId: Number(b.dataset.undo) });
+    flash("Undone. Everyone sees the change right away.");
+    loadCourses(); loadHistory();
   } catch (err) { b.disabled = false; alert("Couldn't undo: " + err.message); }
 });
 function flash(text) { msg($("#extractMsg"), text, "ok"); window.scrollTo({ top: 0, behavior: "smooth" }); }
@@ -221,7 +233,7 @@ $("#extractBtn").addEventListener("click", async () => {
       body.sourceLabel = url;
     }
     setP("Sending to Claude…");
-    const res = await api("extract", body);
+    const res = await call("admin/extract", body);
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     let buf = "", result = null;
@@ -312,15 +324,17 @@ $("#previewCard").addEventListener("click", async (e) => {
   btn.disabled = true;
   msg($("#publishMsg"), "Publishing…");
   try {
-    await api("publish", { course });
+    await call("admin/publish", { course });
     current[course.id] = course;
     draft = null;
     $("#previewCard").hidden = true;
     pdfFile = null; drop.classList.remove("has-file"); $("#fileName").textContent = ""; $("#url").value = ""; $("#notes").value = "";
-    flash(`Published ${course.code} ${course.name}. The planner updates in about a minute.`);
+    flash(`Published ${course.code} ${course.name}. It's live for everyone now.`);
     loadCourses(); loadHistory();
   } catch (err) {
     btn.disabled = false;
     msg($("#publishMsg"), "Couldn't publish: " + err.message, "err");
   }
 });
+
+loadCourses(); loadHistory(); loadTeams(); loadTokens(); loadInbox();

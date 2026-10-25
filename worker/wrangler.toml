@@ -2,15 +2,28 @@ name = "emba-planner-proxy"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 
+# The site itself (public/) is served by this Worker, so pages and API share one origin.
+[assets]
+directory = "../public"
+binding = "ASSETS"
+not_found_handling = "404-page"
+
 [vars]
-# Your GitHub Pages origin (no path). Add http://localhost:8028 while testing locally.
-ALLOWED_ORIGINS = "https://dr-bmo2255.github.io,http://localhost:8028"
 MODEL = "claude-opus-5-5"
 MAX_TOKENS = "16000"
 EXTRACT_MODEL = "claude-opus-5-5"
-GITHUB_REPO = "dr-bmo2255/emba-planner"
-GITHUB_BRANCH = "main"
-SITE_URL = "https://dr-bmo2255.github.io/emba-planner/"
+# Accounts with these emails become maintainers (manage courses, see all teams).
+ADMIN_EMAILS = ""   # set to your @yale.edu address before deploying (local testing uses .dev.vars)
+# "log" prints sign-in codes to the console (local dev); "resend" emails them (production).
+EMAIL_MODE = "log"
+EMAIL_FROM = "EMBA Planner <login@example.org>"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "emba-planner"
+# Placeholder until the production database is created (after approval). Local dev ignores it.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
 
 # Files sent from the iPhone share sheet ("Add to EMBA Planner" shortcut), kept 7 days.
 [[kv_namespaces]]

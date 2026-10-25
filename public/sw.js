@@ -1,11 +1,12 @@
 // Service worker: makes the planner installable and usable offline.
-// App files: served from cache, refreshed in the background. Data (data/*.json): network first,
-// cached copy when offline, so the schedule is always as fresh as the connection allows.
+// App files: cache first (versioned URLs). Your data (/api/data, /api/me, /api/teams): network
+// first, cached copy only when offline; cleared on sign-out. Never cached: other /api calls,
+// chat, calendar feeds.
 // Bump VERSION whenever assets change.
-const VERSION = "2026-10-25n";
+const VERSION = "2026-10-25o";
 const SHELL = [
   "./", "index.html", "manifest.webmanifest",
-  "assets/styles.css", "assets/data.js", "assets/app.js", "assets/assistant.js",
+  "assets/styles.css", "assets/data.js", "assets/app.js", "assets/assistant.js", "assets/signin.js", "assets/teams.js",
   "assets/icons/icon-192.png", "assets/icons/apple-touch-icon.png"
 ];
 
@@ -21,14 +22,14 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   // Only same-origin GETs; never the admin page or anything cross-origin (chat, fonts, CDNs).
-  if (e.request.method !== "GET" || url.origin !== location.origin || /admin/.test(url.pathname)) return;
+  if (e.request.method !== "GET" || url.origin !== location.origin || /admin/.test(url.pathname) || url.pathname.startsWith("/cal/")) return;
 
-  if (url.pathname.includes("/data/")) {
+  if (url.pathname.startsWith("/api/")) {
+    if (!/^\/api\/(data|me|teams)$/.test(url.pathname)) return;
     e.respondWith(fetch(e.request).then((res) => {
-      const copy = res.clone();
-      caches.open("data").then((c) => c.put(e.request, copy));
+      if (res.ok) { const copy = res.clone(); caches.open("api").then((c) => c.put(e.request, copy)); }
       return res;
-    }).catch(() => caches.match(e.request, { ignoreSearch: true })));
+    }).catch(() => caches.match(e.request)));
     return;
   }
 

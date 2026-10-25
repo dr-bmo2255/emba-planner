@@ -1,4 +1,4 @@
-"""Convert the EMBA master class schedule (.xlsx from the EMBA office) into data/sessions.json.
+"""Convert the EMBA master class schedule (.xlsx from the EMBA office) into seed/sessions.json.
 
 Usage:
     python3 tools/import_master_schedule.py syllabi/EMBA+C28+Student+Schedule+10-21-26.xlsx
@@ -109,7 +109,7 @@ def main(path):
             del s[k]
 
     # GENERATED file - re-run this importer when the EMBA office publishes a new master schedule.
-    out = Path(__file__).resolve().parent.parent / "data" / "sessions.json"
+    out = Path(__file__).resolve().parent.parent / "seed" / "sessions.json"
     out.write_text(json.dumps({"source": Path(path).name, "sessions": sessions}, indent=1) + "\n")
     print(f"Wrote {len(sessions)} sessions to {out}")
 

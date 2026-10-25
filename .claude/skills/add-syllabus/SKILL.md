@@ -1,6 +1,6 @@
 ---
 name: add-syllabus
-description: Add or update a course in the EMBA Planner from a syllabus PDF (or refresh the master class schedule from the EMBA office .xlsx) from the command line. Use when the user hands Claude Code a syllabus file or says a schedule changed. (The maintainer can also do this in the browser at admin.html.)
+description: Add or update a course in the EMBA Planner from a syllabus PDF (or refresh the master class schedule from the EMBA office .xlsx) from the command line. Use when the user hands Claude Code a syllabus file or says a schedule changed. (Usually the maintainer does this in the browser on the Manage courses page, admin.html.)
 ---
 
 # Add a syllabus to the EMBA Planner
@@ -18,8 +18,8 @@ Copy the source document into `syllabi/` (git-ignored; it is never published).
 ## 1. Master schedule (.xlsx) instead of a syllabus?
 
 Run `.venv/bin/python tools/import_master_schedule.py syllabi/<file>.xlsx`, which regenerates
-`data/sessions.json`. Diff it (`git diff --stat data/sessions.json`) and summarize what moved. Also update
-`data/program.json` `classWeekends` / `milestones` if a new Program Calendar was provided. Then skip to step 5.
+`seed/sessions.json`. Diff it (`git diff --stat seed/sessions.json`) and summarize what moved. Also update
+`seed/program.json` `classWeekends` / `milestones` if a new Program Calendar was provided. Then skip to step 5.
 
 ## 2. Extract the syllabus
 
@@ -30,11 +30,11 @@ Run `.venv/bin/python tools/import_master_schedule.py syllabi/<file>.xlsx`, whic
 Read ALL of the output. The `LINKS` section pairs each URL with the words it is anchored on.
 Use it to attach Canvas/case links to the right reading. Never invent a URL.
 
-## 3. Write `data/courses/<ID>.json`
+## 3. Write `seed/courses/<ID>.json`
 
-`<ID>` is `MGT` + the 3-digit number (e.g. `MGT412`), matching `courseRegistry` in `data/program.json`
-and the `course` field in `data/sessions.json`. If the file exists, update it in place and keep every
-existing `id` stable, because users' checkmarks are keyed by `id`. Follow `data/courses/MGT411.json` as the
+`<ID>` is `MGT` + the 3-digit number (e.g. `MGT412`), matching `courseRegistry` in `seed/program.json`
+and the `course` field in `seed/sessions.json`. If the file exists, update it in place and keep every
+existing `id` stable, because users' checkmarks are keyed by `id`. Follow `seed/courses/MGT411.json` as the
 canonical example. Schema (plain JSON):
 
 ```js
@@ -70,19 +70,22 @@ Rules:
 - Readings and cases are dated to the class session they prepare for, with `time` = that session's start
   (use the half-session start for "A"/"B" splits so they overlay correctly).
 - Due times: "before 8am" → `"08:00"`; "midnight"/"end of day" → `"23:59"`; "start of class" → session start.
-- Cross-check dates against `data/sessions.json` (the master schedule). If the syllabus and the master
+- Cross-check dates against `seed/sessions.json` (the master schedule). If the syllabus and the master
   schedule disagree, keep the syllabus date and add a `verify` note naming both.
 - Office hours / review sessions → `type: "office"` with Zoom links when given.
 - Don't copy syllabus prose wholesale; titles plus one-line notes are enough. No personal phone numbers.
 
-## 4. Register it
+## 4. Register and publish it
 
-- Add the id to `data/courses/index.json` (`courses`, sorted) and set its `updated` to today.
-- If the course is missing from `courseRegistry` in `data/program.json`, add it with a distinct color
+- Add the id to `seed/courses/index.json` (`courses`, sorted) and set its `updated` to today.
+- Publish to the database (undoable from Manage courses):
+  `python3 tools/seed_db.py --replace <ID> && cd worker && npx wrangler d1 execute DB --remote --file seed.sql`
+  (use `--local` to try it on the local dev server first).
+- If the course is missing from `courseRegistry` in `seed/program.json`, add it with a distinct color
   that is readable as white text.
 - Remove any `verify` flag on `courseRegistry.<ID>.faculty` that the syllabus now confirms.
 
-## 5. Verify, then commit and push (live in about a minute)
+## 5. Verify
 
 Serve the folder (`python3 -m http.server 8028`) or use the `emba-planner` preview, then check that there
 are no console errors, the new course appears in List, Calendar, and By course, links open, and the

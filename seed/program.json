@@ -2,7 +2,7 @@
   "cohort": "Class of 2028",
   "updated": "2026-10-25",
   "assistant": {
-    "endpoint": "https://emba-planner-proxy.emba28.workers.dev",
+    "endpoint": "",
     "model": "claude-opus-5-5"
   },
   "classWeekends": [
@@ -359,7 +359,7 @@
       "color": "#00838f",
       "faculty": [
         {
-          "name": "Balázs Kovács",
+          "name": "Bal\u00e1zs Kov\u00e1cs",
           "title": "Professor of Organizational Behavior",
           "url": "https://som.yale.edu/faculty-research/faculty-directory/balazs-kovacs"
         },

@@ -1,9 +1,11 @@
-// POST /v1/messages: the "Ask the Planner" chat. Forwards to Anthropic with the key held here,
-// so no key ever lives in the browser. Model forced, max_tokens capped, tools stripped,
+// POST /v1/messages: the "Ask the Planner" chat (signed-in users only). Forwards to Anthropic with
+// the key held here, so no key ever lives in the browser. Model forced, max_tokens capped, tools stripped,
 // beta headers allowlisted.
 const ALLOWED_BETAS = new Set(["server-side-fallback-2026-07-01"]);
 
 export async function handleProxy(request, env, cors) {
+  cors = cors || {};
+  if (!env.ANTHROPIC_API_KEY) return json({ error: { type: "api_error", message: "Claude isn't set up on this server yet." } }, 503, cors);
   let body;
   try { body = await request.json(); } catch (e) {
     return json({ error: { type: "invalid_request_error", message: "Body must be JSON" } }, 400, cors);
@@ -21,6 +23,8 @@ export async function handleProxy(request, env, cors) {
   if (betas.length) headers["anthropic-beta"] = betas.join(",");
 
   const upstream = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: JSON.stringify(body) });
+  // A 401 here would mean the server's key is bad; don't let the browser mistake it for "signed out".
+  if (upstream.status === 401) return json({ error: { type: "api_error", message: "The planner's Claude key was rejected." } }, 502, cors);
   // Stream straight through (SSE when the client asked for stream: true).
   return new Response(upstream.body, {
     status: upstream.status,

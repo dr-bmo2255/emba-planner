@@ -1,39 +1,35 @@
-// GET /calendar.ics: a live iCalendar feed built from the planner's published JSON.
-// Calendar apps poll it, so subscribers get updates when a syllabus is published.
-// Optional filters (same values as the planner's menus):
-//   ?courses=MGT410,MGT411  &types=assignment,exam,reading,case,session,colloquium,office,event
-//   &req=required,optional  &mode=individual,group,unspecified  &download=1
+// Calendar feeds. Calendar apps can't sign in, so each student's feed URLs carry their private
+// cal_token (resettable from the account menu):
+//   GET /cal/<token>/courses.ics?courses=MGT410     one course (or several, comma-separated)
+//       optional &types=…&req=…&mode=… (same values as the planner's menus) &download=1
+//   GET /cal/<token>/team/<teamId>.ics             a team's meetings (members only)
+import { loadAll } from "./docs.js";
+
 const TYPES = ["assignment", "exam", "case", "reading", "session", "colloquium", "office", "event"];
 const DUE = new Set(["assignment", "exam"]);
+const ICS_HEADERS = { "content-type": "text/calendar; charset=utf-8", "cache-control": "private, max-age=600" };
 
-export async function handleCalendar(request, env, ctx) {
+export async function handleCalendar(request, env) {
   const url = new URL(request.url);
-  const cache = caches.default;
-  const cacheKey = new Request(url.toString().replace(/[?&]download=1/, ""), { method: "GET" });
-  let res = await cache.match(cacheKey);
-  if (!res) {
-    const data = await loadData(env.SITE_URL);
-    const ics = buildIcs(data, url.searchParams);
-    res = new Response(ics, {
-      headers: { "content-type": "text/calendar; charset=utf-8", "cache-control": "public, max-age=900", "access-control-allow-origin": "*" }
-    });
-    ctx.waitUntil(cache.put(cacheKey, res.clone()));
+  const m = url.pathname.match(/^\/cal\/([A-Za-z0-9_-]{20,})\/(courses|team\/([A-Za-z0-9_-]+))\.ics$/);
+  if (!m) return new Response("Not found", { status: 404 });
+  const user = await env.DB.prepare("SELECT id, role FROM users WHERE cal_token = ?").bind(m[1]).first();
+  if (!user) return new Response("This calendar link is no longer valid. Get a new one from the EMBA Planner.", { status: 404 });
+  let ics;
+  if (m[3]) {
+    const team = await env.DB.prepare("SELECT t.* FROM teams t JOIN team_members tm ON tm.team_id = t.id WHERE t.id = ? AND tm.user_id = ?").bind(m[3], user.id).first();
+    if (!team) return new Response("You're not on this team anymore.", { status: 404 });
+    const [meetings, skips] = await Promise.all([
+      env.DB.prepare("SELECT * FROM meetings WHERE team_id = ?").bind(team.id).all(),
+      env.DB.prepare("SELECT s.meeting_id, s.date FROM meeting_skips s JOIN meetings m ON m.id = s.meeting_id WHERE m.team_id = ?").bind(team.id).all()
+    ]);
+    ics = buildTeamIcs(team, meetings.results, skips.results);
+  } else {
+    ics = buildIcs(await loadAll(env), url.searchParams);
   }
-  if (url.searchParams.get("download") === "1") {
-    res = new Response(res.body, res);
-    res.headers.set("content-disposition", 'attachment; filename="emba-planner.ics"');
-  }
-  return res;
-}
-
-async function loadData(site) {
-  const get = (p) => fetch(site + p, { cf: { cacheTtlByStatus: { "200-299": 120, "400-599": 0 } } }).then((r) => {
-    if (!r.ok) throw new Error(p + " " + r.status);
-    return r.json();
-  });
-  const [program, sched, idx] = await Promise.all([get("data/program.json"), get("data/sessions.json"), get("data/courses/index.json")]);
-  const courses = await Promise.all(idx.courses.map((id) => get("data/courses/" + id + ".json")));
-  return { program, sessions: sched.sessions, courses };
+  const headers = { ...ICS_HEADERS };
+  if (url.searchParams.get("download") === "1") headers["content-disposition"] = 'attachment; filename="emba-planner.ics"';
+  return new Response(ics, { headers });
 }
 
 // Mirrors how the planner itself merges sessions, topics, speakers, and course items.
@@ -68,6 +64,46 @@ function collectItems({ program, sessions, courses }) {
   return { items, info };
 }
 
+function header(name, desc) {
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//EMBA C28 Planner//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "X-WR-CALNAME:" + esc(name), "X-WR-TIMEZONE:America/New_York", "X-WR-CALDESC:" + esc(desc),
+    "REFRESH-INTERVAL;VALUE=DURATION:PT2H", "X-PUBLISHED-TTL:PT2H", ...VTIMEZONE];
+}
+const stampNow = () => new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+const dt = (d, t) => d.replace(/-/g, "") + "T" + t.replace(":", "") + "00";
+const DAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
+/** A team's meetings: weekly series become RRULE events (with EXDATE for skipped dates). */
+function buildTeamIcs(team, meetings, skips) {
+  const L = header(team.name + " (team)", "Meetings for " + team.name + " · EMBA Planner");
+  const stamp = stampNow();
+  for (const m of meetings) {
+    L.push("BEGIN:VEVENT", "UID:meeting-" + m.id + "@emba28-planner", "DTSTAMP:" + stamp);
+    if (m.kind === "once") {
+      L.push("DTSTART;TZID=America/New_York:" + dt(m.date, m.start_time), "DTEND;TZID=America/New_York:" + dt(m.date, m.end_time));
+    } else {
+      const days = m.weekdays.split(",").map(Number);
+      // DTSTART must be the first real occurrence on or after start_date.
+      const d0 = new Date(m.start_date + "T12:00:00Z");
+      while (!days.includes(d0.getUTCDay())) d0.setUTCDate(d0.getUTCDate() + 1);
+      const first = d0.toISOString().slice(0, 10);
+      L.push("DTSTART;TZID=America/New_York:" + dt(first, m.start_time), "DTEND;TZID=America/New_York:" + dt(first, m.end_time));
+      // UNTIL is in UTC: end of until_date in New York is at most 05:00 UTC the next day.
+      const u = new Date(m.until_date + "T12:00:00Z"); u.setUTCDate(u.getUTCDate() + 1);
+      L.push("RRULE:FREQ=WEEKLY;INTERVAL=" + (m.every || 1) + ";WKST=SU;BYDAY=" + days.map((d) => DAY_CODES[d]).join(",") + ";UNTIL=" + u.toISOString().slice(0, 10).replace(/-/g, "") + "T035959Z");
+      const ex = skips.filter((s) => s.meeting_id === m.id).map((s) => dt(s.date, m.start_time));
+      if (ex.length) L.push("EXDATE;TZID=America/New_York:" + ex.join(","));
+    }
+    L.push("SUMMARY:" + esc(team.name + ": " + m.title));
+    const desc = [m.location && /^https?:/.test(m.location) ? "Join: " + m.location : "", m.notes || ""].filter(Boolean).join("\n");
+    if (desc) L.push("DESCRIPTION:" + esc(desc));
+    if (m.location) L.push("LOCATION:" + esc(m.location));
+    L.push("END:VEVENT");
+  }
+  L.push("END:VCALENDAR");
+  return L.map(fold).join("\r\n") + "\r\n";
+}
+
 function buildIcs(data, q) {
   const list = (k, all) => { const v = q.get(k); return new Set(v ? v.split(",").map((s) => s.trim()).filter(Boolean) : all); };
   const types = list("types", TYPES), req = list("req", ["required", "optional"]), mode = list("mode", ["individual", "group", "unspecified"]);
@@ -77,18 +113,14 @@ function buildIcs(data, q) {
     (!["assignment", "exam", "reading", "case"].includes(it.kind) || req.has(it.required === false ? "optional" : "required")) &&
     (!DUE.has(it.kind) || mode.has(it.mode || "unspecified")));
 
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const stamp = stampNow();
   // A single-course feed is named after the course, so each shows up as its own calendar.
   let calName = "EMBA C28 Planner";
   if (courseFilter && courseFilter.size === 1) {
     const only = [...courseFilter][0];
     calName = only === "PROGRAM" ? "EMBA class weekends & events" : only.replace("MGT", "") + " " + info(only).name + " · EMBA";
   }
-  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//EMBA C28 Planner//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    "X-WR-CALNAME:" + esc(calName), "X-WR-TIMEZONE:America/New_York",
-    "X-WR-CALDESC:Yale SOM EMBA Class of 2028 deadlines\\, readings\\, and classes (unofficial). Confirm on Canvas.",
-    "REFRESH-INTERVAL;VALUE=DURATION:PT4H", "X-PUBLISHED-TTL:PT4H", ...VTIMEZONE];
-  const dt = (d, t) => d.replace(/-/g, "") + "T" + t.replace(":", "") + "00";
+  const L = header(calName, "Yale SOM EMBA Class of 2028 deadlines, readings, and classes (unofficial). Confirm on Canvas.");
   const addMin = (t, m) => { const [h, mm] = t.split(":").map(Number); const x = Math.max(0, h * 60 + mm + m); return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };
   const nextDay = (d) => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10).replace(/-/g, ""); };
   const fmtT = (t) => { let [h, m] = t.split(":").map(Number); const ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12; return h + ":" + String(m).padStart(2, "0") + " " + ap; };
