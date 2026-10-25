@@ -75,3 +75,4 @@ details.setup summary::after { content: " ▾"; color: var(--ink-3); }
 details.setup[open] summary::after { content: " ▴"; }
 .steps { padding-left: 20px; line-height: 1.7; font-size: 14px; }
 .steps code { background: #f1f4f8; border-radius: 4px; padding: 1px 5px; font-size: 12.5px; word-break: break-all; }
+.progress[hidden], .drop-icon[hidden] { display: none; }

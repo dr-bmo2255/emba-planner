@@ -164,13 +164,15 @@ async function pdfLinks(buf) {
     const page = await doc.getPage(p);
     const [annots, text] = await Promise.all([page.getAnnotations(), page.getTextContent()]);
     for (const a of annots) {
-      if (a.subtype !== "Link" || !a.url || a.url.startsWith("mailto:") || seen.has(a.url)) continue;
-      seen.add(a.url);
+      if (a.subtype !== "Link" || !a.url || a.url.startsWith("mailto:")) continue;
       const [x1, y1, x2, y2] = a.rect;
       const words = text.items.filter((t) => {
         const x = t.transform[4], y = t.transform[5];
         return x >= x1 - 2 && x <= x2 + 2 && y >= y1 - 4 && y <= y2 + 2;
       }).map((t) => t.str).join(" ").replace(/\s+/g, " ").trim();
+      const key = a.url + "|" + words;
+      if (seen.has(key)) continue;
+      seen.add(key);
       out.push({ page: p, text: words.slice(0, 160), url: a.url });
     }
   }

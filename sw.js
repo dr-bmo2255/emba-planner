@@ -2,7 +2,7 @@
 // App files: served from cache, refreshed in the background. Data (data/*.json): network first,
 // cached copy when offline, so the schedule is always as fresh as the connection allows.
 // Bump VERSION whenever assets change.
-const VERSION = "2026-10-25m";
+const VERSION = "2026-10-25n";
 const SHELL = [
   "./", "index.html", "manifest.webmanifest",
   "assets/styles.css", "assets/data.js", "assets/app.js", "assets/assistant.js",

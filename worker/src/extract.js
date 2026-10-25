@@ -41,7 +41,7 @@ export const COURSE_SCHEMA = {
               date: strOrNull,
               time: strOrNull,
               points: { type: ["number", "null"] },
-              mode: { type: ["string", "null"], enum: ["individual", "group", null] },
+              mode: { anyOf: [{ type: "string", enum: ["individual", "group"] }, { type: "null" }] },
               required: { type: ["boolean", "null"] },
               links: { type: "array", items: link },
               notes: strOrNull,
@@ -148,7 +148,10 @@ export async function extractCourse(env, input, onProgress) {
   if (msg.stop_reason === "max_tokens") throw new Error("The syllabus was too long to finish in one pass. Try splitting it.");
   const text = msg.content.filter((b) => b.type === "text").map((b) => b.text).join("");
   const out = JSON.parse(text);
-  return { ...clean(out), usage: msg.usage };
+  const result = clean(out);
+  const reg = (ctx.registry || []).find((r) => r.id === result.course.id);
+  if (reg && reg.code && reg.code !== result.course.code) result.course.code = reg.code; // e.g. "MGT 422 E1" → "MGT 422E"
+  return { ...result, usage: msg.usage };
 }
 
 /** Normalize and sanity-check what came back, adding warnings instead of failing. */
