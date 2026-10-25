@@ -1,0 +1,54 @@
+// MGT 699E EMBA Colloquium - Fall 2026 to Spring 2027. Source: EMBA+Colloquium+Syllabus+2026-2027.pdf
+(function () {
+  EMBA.courses.push({
+    id: "MGT699",
+    code: "MGT 699E",
+    name: "Colloquium",
+    term: "Fall 2026 - Spring 2027",
+    instructor: "Cort / Forman / Goetzmann",
+    canvas: "https://yale.instructure.com/courses/122113/pages/colloquium-schedule",
+    contacts: [
+      { role: "Faculty Director", name: "Todd Cort" },
+      { role: "Faculty Director", name: "Howard P. Forman" },
+      { role: "Faculty Director", name: "William N. Goetzmann" },
+      { role: "TA", name: "Puneet Chhabra" }
+    ],
+    grading: [
+      { label: "Attendance and participation (min. 8 sessions/year)", weight: 60 },
+      { label: "Paper #1 (fall)", weight: 20 },
+      { label: "Paper #2 (spring)", weight: 20 }
+    ],
+    notes: "Pass/fail (Proficient). Attend at least 8 sessions. Attendance quiz opens 12:45-1:05 PM: scan the QR code, open Canvas on your phone, take the quiz. Not recorded.",
+
+    // Overlaid onto the Friday 1:00 PM Colloquium sessions from the master schedule
+    speakers: [
+      { date: "2026-08-14", speaker: "Kick-Off Session", location: "Snyder Forum, first floor" },
+      { date: "2026-08-28", speaker: "Michelle Gabriel, PhD, MS", title: "Lecturer, Yale School of the Environment and Columbia University; Resident Fellow, CBEY", location: "2400", url: "https://cbey.yale.edu/our-community/michelle-gabriel" },
+      { date: "2026-09-11", speaker: "Paul Doremus, PhD", title: "VP for Policy and Sustainability Strategy, Trident Seafoods", location: "Snyder Forum, first floor", url: "https://www.seafoodnutrition.org/profile/paul-doremus-phd/" },
+      { date: "2026-09-25", speaker: "Jonathan Cohn", title: "Senior National Correspondent, The Bulwark", location: "Snyder Forum, first floor", url: "https://citizencohn.substack.com/about" },
+      { date: "2026-10-09", speaker: "Juan Carlos Garcia, MBA", title: "Managing Director, Quadrant Capital Advisors", location: "2400", url: "https://som.yale.edu/story/2022/yale-icf-advisory-board-member-spotlight-juan-carlos-garcia-p-22" },
+      { date: "2026-10-23", speaker: "Martha Crawford, MS, MBA, PhD", title: "Board Director, GHD, LRS, Senexen, Abundia Global Impact Group and Blink Charging", location: "4400", url: "https://www.ghd.com/en/biography/martha-crawford" },
+      { date: "2026-11-06", speaker: "Omar Lateef, MD", title: "CEO, Rush Health", location: "4400", url: "https://www.rush.edu/about-us/system-leadership/dr-omar-b-lateef" },
+      { date: "2026-11-20", speaker: "Brian Reilly, JD", title: "CFO, LuxWall; former Vice Chairman, Climate Tech & Energy Transition Banking at Barclays", location: "Snyder Forum, first floor", url: "https://www.linkedin.com/in/brian-reilly-0bb60923a/" },
+      { date: "2026-12-04", speaker: "Hil Moss, MBA '22, MPH '22", title: "Co-Founder and CEO, Oncovery Care", location: "Snyder Forum, first floor", url: "https://www.oncoverycare.com/resources/meet-the-team-hil-co-founder-ceo" },
+      { date: "2027-01-08", speaker: "Ryan Dings, JD, MDesS", title: "CEO and President, Climate Haven", location: "Snyder Forum, first floor", url: "https://www.climatehaven.tech/team/ryan-dings" },
+      { date: "2027-01-22", speaker: "Nancy Zimmerman", title: "Co-founder and Managing Partner, Bracebridge Capital", location: "TBA", url: "https://sohnmontreal.org/speaker/nancy-zimmerman/" },
+      { date: "2027-02-05", speaker: "Pamela Sutton-Wallace, MPH '97", title: "President, Yale New Haven Health System", location: "Snyder Forum, first floor", url: "https://ysph.yale.edu/news-article/ysph-alumna-pamela-sutton-wallace-to-lead-yale-new-haven-health/" },
+      { date: "2027-02-19", speaker: "Paula Volent, MBA, MA", title: "VP and Chief Investment Officer, The Rockefeller University", location: "Snyder Forum, first floor", url: "https://som.yale.edu/profile/alumni/paula-j-volent-97" },
+      { date: "2027-03-05", speaker: "Elizabeth Bradley, MBA, PhD", title: "President, Vassar College", location: "Snyder Forum, first floor", url: "https://www.vassar.edu/faculty/ebradley" },
+      { date: "2027-03-19", speaker: "Seema Hingorani, MBA", title: "Managing Director, Investment Management, Morgan Stanley; Founder and Board Chair, Girls Who Invest", location: "Snyder Forum, first floor", url: "https://yale.instructure.com/courses/122113/modules/items/1142909" },
+      { date: "2027-04-02", speaker: "Daniel Dawes, JD", title: "Founding Dean, School of Global Health; SVP of Global Health, Meharry Medical College", location: "Snyder Forum, first floor", url: "https://forhumanity.yale.edu/daniel-dawes" },
+      { date: "2027-04-16", speaker: "Beatriz Perez", title: "EVP and Global Chief Communications, Sustainability and Strategic Partnerships Officer, The Coca-Cola Company", location: "TBA", url: "https://www.coca-colacompany.com/about-us/leadership/bea-perez" },
+      { date: "2027-04-30", speaker: "Yariv Itah, MBA '99", title: "Global Practice Leader, Casey Quirk (a Deloitte business)", location: "TBA" }
+    ],
+
+    items: [
+      { id: "699-paper1", type: "assignment", title: "Colloquium Paper #1 (fall reflection)", date: null,
+        points: 20, mode: "individual", required: true,
+        notes: "Essay of at least 1,000 words reflecting on a key takeaway from each fall speaker and how you will apply it. Required to pass. Cite any AI use (tools + prompts) at the end. Due date not in syllabus; check Canvas." },
+      { id: "699-paper2", type: "assignment", title: "Colloquium Paper #2 (spring reflection)", date: null,
+        points: 20, mode: "individual", required: true,
+        notes: "Same prompt as Paper #1, covering spring speakers. Required to pass. Due date not in syllabus; check Canvas." }
+    ]
+  });
+})();

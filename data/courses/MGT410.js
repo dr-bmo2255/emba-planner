@@ -1,0 +1,87 @@
+// MGT 410E Competitor - Fall 2026. Source: EMBA+Competitor+Syllabus+FA26.pdf
+(function () {
+  const F = "https://yale.instructure.com/courses/122093/files/folder/";
+  const S1 = F + "Session%201A%20and%201B%3A%20September%2012%2C%202026/";
+  const S2 = F + "Session%202A%20and%202B%3A%20September%2025%2C%202026/";
+  const S3 = F + "Session%203A%20and%203B%3A%20October%2010%2C%202026/";
+  const S4 = F + "Session%204A%20and%204B%3A%20October%2024%2C%202026/";
+  const S5 = F + "Session%205A%20and%205B%3A%20November%207%2C%202026/";
+  const PS_NOTE = "Submit on Canvas. Most written work is group work by learning-team subgroup; put your subgroup number (e.g., 7A) and member names on it. Check each assignment's directions for any individual parts.";
+  const TEXTBOOK = "Recommended textbook reading (Pindyck & Rubinfeld, Microeconomics, 9th ed.)";
+
+  EMBA.courses.push({
+    id: "MGT410",
+    code: "MGT 410E",
+    name: "Competitor",
+    term: "Fall 2026",
+    instructor: "Kevin Williams",
+    canvas: "https://yale.instructure.com/courses/122093",
+    contacts: [
+      { role: "Professor", name: "Kevin Williams" },
+      { role: "TA", name: "Grisel Ramirez Roldan" },
+      { role: "TA", name: "Jorge Arroyave Garcia de la Cadena" },
+      { role: "TA", name: "Robbie Ryan" }
+    ],
+    grading: [
+      { label: "Problem sets (3)", weight: 40 },
+      { label: "Final exam (remote, timed)", weight: 40 },
+      { label: "Attendance and participation", weight: 20 }
+    ],
+    notes: "Written work is due at the start of class unless stated otherwise. AI tools allowed on everything except the closed-book final.",
+
+    topics: [
+      { date: "2026-09-12", label: "1 Course Introduction and Bertrand Pricing Model" },
+      { date: "2026-09-25", label: "2 Quantity Choice (Cournot), First-Mover Advantage (Stackelberg), Repeated Games" },
+      { date: "2026-10-10", label: "3 Introduction to Differentiated Products Models (Hotelling)" },
+      { date: "2026-10-24", label: "4 Double Marginalization, Franchising, Industry Analysis (Porter's 5 Forces)" },
+      { date: "2026-11-07", label: "5 Industry Analysis Case and Antitrust Policies" },
+      { date: "2026-11-21", label: "6 Industry Analysis Applied and Profitability in Oligopoly (presentation day)" }
+    ],
+
+    items: [
+      // ---- Deliverables
+      { id: "410-hw1", type: "assignment", title: "HW1", date: "2026-09-25", time: "08:00",
+        points: 13.33, mode: "group", required: true, notes: PS_NOTE,
+        verify: "Points split evenly: 3 problem sets = 40%." },
+      { id: "410-hw2", type: "assignment", title: "HW2", date: "2026-10-23", time: "08:00",
+        points: 13.33, mode: "group", required: true, notes: PS_NOTE + " Syllabus says due before 8 AM on 10/23 (the Friday before the 10/24 session).",
+        verify: "Points split evenly: 3 problem sets = 40%." },
+      { id: "410-hw3", type: "assignment", title: "HW3 + presentation", date: "2026-11-20", time: "08:00",
+        points: 13.33, mode: "group", required: true, notes: PS_NOTE + " 11/21 is presentation day.",
+        verify: "Points split evenly: 3 problem sets = 40%." },
+      { id: "410-final", type: "exam", title: "Final exam (remote, time-limited)", date: "2026-12-06", time: "23:59",
+        points: 40, mode: "individual", required: true,
+        notes: "Exam window opens 11/22 and closes 12/6. Closed book; no AI tools." },
+
+      // ---- Readings and cases
+      { id: "410-r-oster", type: "reading", title: "Oster & Podolny, \"A Note on the Competitor Perspective\"", date: "2026-09-12", time: "08:00", required: true,
+        links: [{ label: "Canvas", url: S1 + "Session%201A/Required%20Readings?preview=12943761" }] },
+      { id: "410-t-ch12-2", type: "reading", title: "Pindyck & Rubinfeld Ch. 12.2 (review) and 12.3", date: "2026-09-12", time: "08:00", required: false, notes: TEXTBOOK },
+      { id: "410-r-opec", type: "reading", title: "\"OPEC oil 'price war' will halt shale boom, say US producers\"", date: "2026-09-25", time: "09:00", required: true,
+        links: [{ label: "Canvas", url: S2 + "Session%202B/Required%20Reading?preview=12948858" }] },
+      { id: "410-t-ch12-4", type: "reading", title: "Pindyck & Rubinfeld Ch. 12.4-12.6", date: "2026-09-25", time: "09:00", required: false, notes: TEXTBOOK },
+      { id: "410-c-walmart", type: "case", title: "SOM Case: Walmart vs Target (prepare discussion questions)", date: "2026-10-10", time: "08:00", required: true,
+        notes: "Use the Yale VPN and sign in with your NetID.",
+        links: [{ label: "SOM case site", url: "https://cases.som.yale.edu/walmart-vs-target/access?cases-access-redirect=1" },
+                { label: "Yale VPN", url: "https://library.yale.edu/find-request-and-use/use/using-e-resources/virtual-private-network-vpn" }] },
+      { id: "410-t-cabral-a", type: "reading", title: "Cabral Ch. 12 \"Product Differentiation\" through 12.2 (ends p. 215)", date: "2026-10-10", time: "08:00", required: false,
+        notes: "Recommended textbook reading.",
+        links: [{ label: "Canvas", url: S3 + "Session%203A/Recommended%20Readings?preview=12943766" }] },
+      { id: "410-t-cabral-b", type: "reading", title: "Cabral Ch. 12 \"Product Differentiation\" 12.3 (p. 215) to end", date: "2026-10-10", time: "08:00", required: false,
+        notes: "Recommended textbook reading.",
+        links: [{ label: "Canvas", url: S3 + "Session%203A/Recommended%20Readings?preview=12943767" }] },
+      { id: "410-t-ch12-2b", type: "reading", title: "Pindyck & Rubinfeld Ch. 12.2-12.3", date: "2026-10-10", time: "08:00", required: false, notes: TEXTBOOK },
+      { id: "410-t-ch11app", type: "reading", title: "Pindyck & Rubinfeld, Appendix to Ch. 11", date: "2026-10-24", time: "08:00", required: false, notes: TEXTBOOK },
+      { id: "410-r-porter", type: "reading", title: "HBR: The Five Competitive Forces that Shape Strategy (R0801E)", date: "2026-10-24", time: "08:00", required: true,
+        links: [{ label: "Canvas", url: S4 + "Session%204B/Required%20Readings?preview=12948874" }] },
+      { id: "410-r-hubbard", type: "reading", title: "Hubbard, \"Industry Analysis and Oligopoly Models\"", date: "2026-10-24", time: "08:00", required: true,
+        links: [{ label: "Canvas", url: S4 + "Session%204B/Required%20Readings?preview=12943783" }] },
+      { id: "410-c-spotify", type: "case", title: "Case: Spotify: Face the Music (prepare discussion questions)", date: "2026-11-07", time: "08:00", required: true,
+        links: [{ label: "Canvas", url: S5 + "Session%205A/Required%20Reading?preview=12948878" }] },
+      { id: "410-r-abinbev", type: "reading", title: "U.S. DOJ v. Anheuser-Busch and Grupo Modelo", date: "2026-11-07", time: "08:00", required: true,
+        links: [{ label: "Canvas", url: S5 + "Session%205B/Required%20Readings?preview=13265450" }] },
+      { id: "410-r-bath", type: "reading", title: "Second Bridge in the Bath", date: "2026-11-07", time: "08:00", required: true,
+        links: [{ label: "Canvas", url: S5 + "Session%205B/Required%20Readings?preview=13265451" }] }
+    ]
+  });
+})();

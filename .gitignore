@@ -1,0 +1,5 @@
+# Source documents stay local: they're school materials and include contact details.
+syllabi/
+.venv/
+__pycache__/
+.DS_Store

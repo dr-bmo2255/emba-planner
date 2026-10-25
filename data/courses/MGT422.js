@@ -1,0 +1,99 @@
+// MGT 422E Operations Engine - Fall 2026. Source: MGT422E+FA26+Syllabus.pdf
+(function () {
+  const F = "https://yale.instructure.com/courses/122098/files/folder/";
+  const S1 = F + "Session%201%3A%20October%209%2C%202026/";
+  const S2 = F + "Session%202%3A%20October%2023%2C%202026/";
+  const S3 = F + "Session%203%3A%20November%206%2C%202026/";
+  const S4 = F + "Session%204%3A%20November%2020%2C%202026/";
+  const S5 = F + "Session%205%3A%20December%204%2C%202026/";
+  const S6 = F + "Session%206%3A%20December%2018%2C%202026/";
+  const HW_NOTE = "Submit electronically via Canvas by 8 AM ET. Your answers may form the basis for class discussion. AI use must be disclosed.";
+  const zoom = (id) => [{ label: "Zoom", url: "https://yale.zoom.us/j/" + id }];
+
+  EMBA.courses.push({
+    id: "MGT422",
+    code: "MGT 422E",
+    name: "Operations Engine",
+    term: "Fall 2026",
+    instructor: "Lesley Meng",
+    canvas: "https://yale.instructure.com/courses/122098",
+    contacts: [
+      { role: "Professor", name: "Lesley Meng" },
+      { role: "TA", name: "Kwanmo Choi" },
+      { role: "TA", name: "Keshav Sharma" }
+    ],
+    grading: [
+      { label: "Final exam (take-home)", weight: 50 },
+      { label: "Homework assignments (4)", weight: 30 },
+      { label: "Attendance and participation", weight: 20 }
+    ],
+    notes: "Assigned cases must be read before class. All non-case readings are optional. No AI in class or on the final; no HBS materials in AI tools.",
+
+    topics: [
+      { date: "2026-10-09", start: "16:15", label: "1 Introduction / Process Analysis (in-class exercise, no prep)" },
+      { date: "2026-10-23", start: "14:30", label: "2 Process Analysis (Scharffen Berger) / Process Analysis & Diagnostics (National Cranberry)" },
+      { date: "2026-11-06", start: "14:30", label: "3 Strategic Process Design (Beleza Natural) / Variability: Queueing" },
+      { date: "2026-11-06", start: "17:45", label: "3 Variability: Queue Configurations (in-class exercise)" },
+      { date: "2026-11-20", start: "14:30", label: "4 Inventory: Newsvendor Model (Ludo Press) / EOQ Model" },
+      { date: "2026-12-04", start: "14:30", label: "5 Quality Management (Ritz-Carlton) / Lean Operations (Toyota)" },
+      { date: "2026-12-18", start: "14:30", label: "6 Ops as a Competitive Advantage (Zara) / Wrap Up & Review" }
+    ],
+
+    items: [
+      // ---- Deliverables
+      { id: "422-hw1", type: "assignment", title: "Homework 1 (National Cranberry Case)", date: "2026-10-23", time: "08:00",
+        points: 7.5, mode: "group", required: true, notes: HW_NOTE,
+        verify: "Points split evenly: 4 homeworks = 30%." },
+      { id: "422-hw2", type: "assignment", title: "Homework 2", date: "2026-11-20", time: "08:00",
+        points: 7.5, mode: "individual", required: true, notes: HW_NOTE,
+        verify: "Points split evenly: 4 homeworks = 30%." },
+      { id: "422-hw3", type: "assignment", title: "Homework 3", date: "2026-12-04", time: "08:00",
+        points: 7.5, mode: "individual", required: true, notes: HW_NOTE,
+        verify: "Points split evenly: 4 homeworks = 30%." },
+      { id: "422-hw4", type: "assignment", title: "Homework 4", date: "2026-12-18", time: "08:00",
+        points: 7.5, mode: "individual", required: true, notes: HW_NOTE,
+        verify: "Points split evenly: 4 homeworks = 30%." },
+      { id: "422-final", type: "exam", title: "Take-home final exam", date: null,
+        points: 50, mode: "individual", required: true,
+        notes: "Covers all lectures, cases, and discussions. Date to be announced after the last session (12/18)." },
+
+      // ---- Readings and cases
+      { id: "422-r-pa1", type: "reading", title: "\"Process Analysis\" Sections 1.0-2.1", date: "2026-10-09", time: "16:15", required: false,
+        links: [{ label: "Canvas", url: S1 + "Optional%20Reading?preview=13081147" }] },
+      { id: "422-c-scharffen", type: "case", title: "Case: Scharffen Berger Chocolate", date: "2026-10-23", time: "14:30", required: true,
+        links: [{ label: "Canvas", url: S2 + "Required%20Cases?preview=13081118" }] },
+      { id: "422-r-pa2", type: "reading", title: "\"Process Analysis\" Sections 2.3-2.4", date: "2026-10-23", time: "14:30", required: false,
+        links: [{ label: "Canvas", url: S2 + "Optional%20Reading?preview=13081149" }] },
+      { id: "422-c-cranberry", type: "case", title: "Case: National Cranberry Cooperative", date: "2026-10-23", time: "16:00", required: true,
+        links: [{ label: "Canvas", url: S2 + "Required%20Cases?preview=13081119" }] },
+      { id: "422-c-beleza", type: "case", title: "Case: Beleza Natural", date: "2026-11-06", time: "14:30", required: true,
+        links: [{ label: "Canvas", url: S3 + "Required%20Cases?preview=13081152" }] },
+      { id: "422-r-ct8a", type: "reading", title: "Cachon & Terwiesch Ch. 8.0-8.6 (queueing)", date: "2026-11-06", time: "16:00", required: false,
+        links: [{ label: "Canvas", url: S3 + "Optional%20Readings?preview=13080993" }] },
+      { id: "422-r-ct8b", type: "reading", title: "Cachon & Terwiesch Ch. 8.9-8.12 (queue configurations)", date: "2026-11-06", time: "17:45", required: false,
+        links: [{ label: "Canvas", url: S3 + "Optional%20Readings?preview=13080993" }] },
+      { id: "422-c-ludo", type: "case", title: "Case: Ludo Press", date: "2026-11-20", time: "14:30", required: true,
+        links: [{ label: "Canvas", url: S4 + "Required%20Case?preview=13081003" }] },
+      { id: "422-r-newsvendor", type: "reading", title: "\"Newsvendor Model\"", date: "2026-11-20", time: "14:30", required: false,
+        links: [{ label: "Canvas", url: S4 + "Optional%20Readings?preview=13081155" }] },
+      { id: "422-r-inventory", type: "reading", title: "\"Managing Inventory\"", date: "2026-11-20", time: "16:00", required: false,
+        links: [{ label: "Canvas", url: S4 + "Optional%20Readings?preview=13081005" }] },
+      { id: "422-c-ritz", type: "case", title: "Case: The Ritz-Carlton Hotel Company", date: "2026-12-04", time: "14:30", required: true,
+        links: [{ label: "Canvas", url: S5 + "Required%20Cases?preview=13081157" }] },
+      { id: "422-r-ct10", type: "reading", title: "Cachon & Terwiesch Ch. 10 (quality)", date: "2026-12-04", time: "14:30", required: false,
+        links: [{ label: "Canvas", url: S5 + "Optional%20Reading?preview=13080992" }] },
+      { id: "422-c-toyota", type: "case", title: "Case: Toyota 2010 (Abridged)", date: "2026-12-04", time: "16:00", required: true,
+        links: [{ label: "Canvas", url: S5 + "Required%20Cases?preview=13081011" }] },
+      { id: "422-c-zara", type: "case", title: "Case: Can Zara Fast-Forward Fashion?", date: "2026-12-18", time: "14:30", required: true,
+        links: [{ label: "Canvas", url: S6 + "Required%20Case?preview=13081165" }] },
+
+      // ---- Office hours and review sessions
+      { id: "422-oh-prof", type: "office", title: "Prof. Meng office hours", date: "2026-10-20", time: "19:00", links: zoom("91539449151") },
+      { id: "422-oh-ta1", type: "office", title: "TA office hours", date: "2026-11-12", time: "19:00", links: zoom("91375457140") },
+      { id: "422-rv-1", type: "office", title: "Review session", date: "2026-11-12", time: "20:00", links: zoom("96463368672") },
+      { id: "422-oh-ta2", type: "office", title: "TA office hours", date: "2026-12-01", time: "20:00", links: zoom("99441141728") },
+      { id: "422-oh-ta3", type: "office", title: "TA office hours", date: "2026-12-10", time: "20:00", links: zoom("98935750319") },
+      { id: "422-rv-2", type: "office", title: "Review session", date: "2026-12-10", time: "20:00", links: zoom("99984209870") }
+    ]
+  });
+})();
