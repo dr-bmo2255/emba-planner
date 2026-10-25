@@ -414,9 +414,17 @@ ${plannerContext()}
   return systemPrompt;
 }
 
+// Compact inline link for an item Claude mentions mid-sentence; click opens the details panel.
+function refTag(it) {
+  const info = A.courseInfo(it.course);
+  const when = it.date ? A.fmtDate(it.date) : "TBA";
+  return `<button class="ask-ref${A.done.has(it.id) ? " done" : ""}" data-item="${esc(it.id)}" style="--c:${info.color}" title="${esc(it.title)}">` +
+    `${esc(A.courseNum(it.course))} · ${esc(when)} ↗</button>`;
+}
+
 function renderMarkdown(text) {
   const inline = (s) => esc(s)
-    .replace(/\[\[([A-Za-z0-9_.-]+)\]\]/g, (m, id) => A.itemById[id] ? itemLine(A.itemById[id]).replace(/\n\s*/g, "") : "")
+    .replace(/\[\[([A-Za-z0-9_.-]+)\]\]/g, (m, id) => A.itemById[id] ? refTag(A.itemById[id]) : "")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (m, t, u) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`)
     .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
   const out = [];

@@ -284,3 +284,9 @@ button { font: inherit; color: inherit; }
   .ask-panel { right: 0; bottom: 0; width: 100vw; height: 100dvh; border-radius: 0; }
   .ask-fab { right: 12px; bottom: 12px; }
 }
+.ask-ref {
+  display: inline-block; vertical-align: 1px; margin: 0 1px; padding: 0 6px; border: 0; border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 14%, #fff); color: var(--c); font: 600 11px/1.6 Inter, sans-serif; cursor: pointer; white-space: nowrap;
+}
+.ask-ref:hover { background: color-mix(in srgb, var(--c) 26%, #fff); }
+.ask-ref.done { color: var(--done); text-decoration: line-through; background: #f1f3f6; }
