@@ -702,36 +702,53 @@
     const qs = q.toString();
     return qs ? "?" + qs : "";
   }
-  function calendarHtml(scope) {
-    const https = FEED + feedQuery(scope);
+  function subLinks(query, label) {
+    const https = FEED + query;
     const webcal = https.replace(/^https:/, "webcal:");
-    const name = encodeURIComponent("EMBA C28 Planner");
+    const name = encodeURIComponent(label);
+    return '<a class="sub-btn" href="' + esc(webcal) + '" title="Apple Calendar (iPhone, iPad, Mac)">Apple</a>' +
+      '<a class="sub-btn" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/render?cid=' + encodeURIComponent(webcal) + '" title="Google Calendar">Google</a>' +
+      '<a class="sub-btn" target="_blank" rel="noopener" href="https://outlook.office.com/calendar/0/addfromweb?url=' + encodeURIComponent(https) + "&name=" + name + '" title="Outlook (Microsoft 365)">Outlook</a>' +
+      '<button class="sub-btn" data-copy="' + esc(https) + '" title="Copy the feed address">Copy link</button>';
+  }
+  function calendarHtml(scope) {
+    // Courses with a syllabus first, then schedule-only courses; each is its own calendar.
+    const list = coursesWithItems.filter((id) => id !== "PROGRAM")
+      .sort((a, b) => (courseById[a] ? 0 : 1) - (courseById[b] ? 0 : 1) || a.localeCompare(b));
+    const row = (id, label, sub) => '<div class="sub-row" style="--c:' + courseInfo(id).color + '"><i class="dd-swatch"></i>' +
+      '<div class="sub-name"><b>' + esc(label) + "</b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</div>" +
+      '<div class="sub-btns">' + subLinks("?courses=" + id, label) + "</div></div>";
     const filtered = feedQuery("mine") !== "";
+    const combined = FEED + feedQuery(scope);
     return '<div class="cal-modal"><h3 id="modal-title">Add to your calendar</h3>' +
-      '<p class="muted-p">Subscribe once and new syllabi, date changes, and readings show up in your calendar automatically. Deadlines appear as "DUE" events with their points and links.</p>' +
-      '<div class="seg" role="radiogroup" aria-label="What to include">' +
-      '<label><input type="radio" name="calscope" value="all"' + (scope !== "mine" ? " checked" : "") + '> Everything</label>' +
-      '<label><input type="radio" name="calscope" value="mine"' + (scope === "mine" ? " checked" : "") + (filtered ? "" : " disabled") + "> Only what I'm showing" + (filtered ? "" : " (no filters set)") + "</label></div>" +
-      '<div class="cal-btns">' +
-      '<a class="cal-btn" href="' + esc(webcal) + '"><b>Apple Calendar</b><span>iPhone, iPad, Mac</span></a>' +
-      '<a class="cal-btn" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/render?cid=' + encodeURIComponent(webcal) + '"><b>Google Calendar</b><span>Opens Google, then click Add</span></a>' +
-      '<a class="cal-btn" target="_blank" rel="noopener" href="https://outlook.live.com/calendar/0/addfromweb?url=' + encodeURIComponent(https) + "&name=" + name + '"><b>Outlook.com</b><span>Personal Outlook</span></a>' +
-      '<a class="cal-btn" target="_blank" rel="noopener" href="https://outlook.office.com/calendar/0/addfromweb?url=' + encodeURIComponent(https) + "&name=" + name + '"><b>Outlook (work/school)</b><span>Microsoft 365</span></a>' +
+      '<p class="muted-p">Subscribe to each of <b>your</b> courses separately. Each one shows up as its own calendar you can color, hide, or remove, and it updates automatically when the syllabus or dates change.</p>' +
+      '<div class="sub-list">' +
+      list.map((id) => row(id, courseNum(id) + " " + courseInfo(id).name, courseById[id] ? "Classes, deadlines, readings" : "Class times only (syllabus not loaded yet)")).join("") +
+      row("PROGRAM", "Class weekends & program events", "Every class weekend, residence weeks, Global Network Week, Commencement") +
       "</div>" +
-      '<div class="cal-copy"><input readonly value="' + esc(https) + '" aria-label="Calendar feed address"><button class="btn btn-ghost" data-copy-feed>Copy link</button></div>' +
-      '<p class="muted-p">Calendar apps check for updates on their own schedule: Apple every few hours, Google roughly once or twice a day. Your checkmarks stay in this planner and aren\'t sent to the calendar.</p>' +
-      '<hr><p class="muted-p"><b>Just want a one-time copy?</b> <a href="' + esc(https + (https.includes("?") ? "&" : "?") + "download=1") + '">Download an .ics file</a>. It won\'t update.</p></div>';
+      '<details class="combined"><summary>Prefer one combined calendar?</summary>' +
+      '<div class="seg" role="radiogroup" aria-label="What to include">' +
+      '<label><input type="radio" name="calscope" value="all"' + (scope !== "mine" ? " checked" : "") + "> Everything</label>" +
+      '<label><input type="radio" name="calscope" value="mine"' + (scope === "mine" ? " checked" : "") + (filtered ? "" : " disabled") + "> Only what I'm showing" + (filtered ? "" : " (no filters set)") + "</label></div>" +
+      '<div class="sub-btns">' + subLinks(feedQuery(scope), "EMBA C28 Planner") + "</div>" +
+      '<p class="muted-p"><a href="' + esc(combined + (combined.includes("?") ? "&" : "?") + "download=1") + '">Download a one-time .ics file</a> (won\'t update).</p></details>' +
+      '<p class="muted-p">Calendar apps check for changes on their own schedule: Apple every few hours, Google about once a day. Your checkmarks stay in the planner. For personal Outlook.com, use <b>Copy link</b> and add it under "Subscribe from web".</p></div>';
   }
   $("#addToCal").addEventListener("click", () => openModal({ html: calendarHtml("all"), color: "var(--yale-blue)" }));
   $("#modal").addEventListener("change", (e) => {
-    if (e.target.name === "calscope") openModal({ html: calendarHtml(e.target.value), color: "var(--yale-blue)" });
+    if (e.target.name === "calscope") {
+      openModal({ html: calendarHtml(e.target.value), color: "var(--yale-blue)" });
+      const d = document.querySelector("#modal details.combined");
+      if (d) d.open = true;
+    }
   });
   $("#modal").addEventListener("click", (e) => {
-    if (!e.target.matches("[data-copy-feed]")) return;
-    const input = e.target.previousElementSibling;
-    input.select();
-    (navigator.clipboard ? navigator.clipboard.writeText(input.value) : Promise.reject()).catch(() => document.execCommand("copy"));
-    e.target.textContent = "Copied ✓";
+    const b = e.target.closest("[data-copy]");
+    if (!b) return;
+    const v = b.dataset.copy;
+    const fallback = () => { const t = document.createElement("textarea"); t.value = v; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); };
+    (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).catch(fallback);
+    b.textContent = "Copied ✓";
   });
 
   // ---------- Install as an app ----------
@@ -751,17 +768,23 @@
 
 
   function renderSummary() {
-    const in14 = iso(new Date(Date.now() + 14 * 864e5));
-    const dueSoon = items.filter((i) => KINDS[i.kind].due && i.date && i.date >= todayIso && i.date <= in14 && !done.has(i.id) && prefs.courses.has(i.course));
-    const readSoon = items.filter((i) => (i.kind === "reading" || i.kind === "case") && i.required !== false && i.date && i.date >= todayIso && i.date <= in14 && !done.has(i.id) && prefs.courses.has(i.course));
+    // Counts cover the current class cycle: from the Sunday after the last class weekend through
+    // the end of the next one, so overdue items in this cycle still count as "left".
+    const inCycle = (i) => i.date && cycle && i.date >= cycle.start && i.date <= cycle.end && prefs.courses.has(i.course);
+    const dueAll = items.filter((i) => KINDS[i.kind].due && i.required !== false && inCycle(i));
+    const dueLeft = dueAll.filter((i) => !done.has(i.id));
+    const readAll = items.filter((i) => (i.kind === "reading" || i.kind === "case") && i.required !== false && inCycle(i));
+    const readLeft = readAll.filter((i) => !done.has(i.id));
     const next = items.find((i) => KINDS[i.kind].due && i.date && i.date >= todayIso && !done.has(i.id) && prefs.courses.has(i.course));
-    const nextWk = D.program.classWeekends.find((w) => w[1] >= todayIso);
+    const wk = cycle ? fmtDate(cycle.weekend[0]) + " – " + fmtDate(cycle.weekend[1]) : "";
+    const bar = (left, all) => all ? '<i class="stat-bar"><i style="width:' + Math.round(100 * (all - left) / all) + '%"></i></i>' : "";
     $("#summary").innerHTML =
-      '<div class="stat"><b>' + dueSoon.length + "</b><span>deliverables due in the next 14 days</span></div>" +
-      '<div class="stat"><b>' + readSoon.length + "</b><span>required readings and cases in the next 14 days</span></div>" +
+      '<div class="stat"><b>' + dueLeft.length + ' <small>left</small></b><span>of ' + dueAll.length + " deliverable" + (dueAll.length === 1 ? "" : "s") + " due before the " + esc(wk) + " class weekend</span>" + bar(dueLeft.length, dueAll.length) + "</div>" +
+      '<div class="stat"><b>' + readLeft.length + ' <small>left</small></b><span>of ' + readAll.length + " required reading" + (readAll.length === 1 ? "" : "s") + " and cases before that weekend</span>" + bar(readLeft.length, readAll.length) + "</div>" +
       '<div class="stat"><b>' + (next ? esc(fmtDow(next.date) + " " + fmtDate(next.date)) : "—") + "</b><span>" + (next ? "Next due: " + esc(courseNum(next.course) + " " + next.title) : "Nothing due") + "</span></div>" +
-      '<div class="stat"><b>' + (nextWk ? esc(fmtDate(nextWk[0]) + " – " + fmtDate(nextWk[1])) : "—") + "</b><span>Next class weekend</span></div>";
+      '<div class="stat"><b>' + (wk || "—") + "</b><span>Next class weekend</span></div>";
   }
+
 
   // ---------- main render ----------
   function render() {

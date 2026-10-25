@@ -430,3 +430,20 @@ button { font: inherit; color: inherit; }
   .ask-fab { bottom: calc(20px + env(safe-area-inset-bottom)); }
 }
 .wrap, .masthead-inner { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+
+.stat b small { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.stat-bar { display: block; height: 5px; background: #e8ecf1; border-radius: 99px; overflow: hidden; margin-top: 7px; }
+.stat-bar i { display: block; height: 100%; background: #1d6b43; border-radius: 99px; }
+
+.sub-list { display: flex; flex-direction: column; margin: 10px 0; border-top: 1px solid var(--line); }
+.sub-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.sub-row .dd-swatch { background: var(--c); }
+.sub-name { flex: 1 1 200px; min-width: 0; }
+.sub-name b { display: block; font-size: 14px; }
+.sub-name small { color: var(--ink-3); font-size: 12px; }
+.sub-btns { display: flex; gap: 5px; flex-wrap: wrap; }
+.sub-btn { border: 1px solid var(--line); background: #fff; color: var(--yale-blue); border-radius: 6px; padding: 4px 9px; font-size: 12.5px; font-weight: 600; text-decoration: none; cursor: pointer; font-family: inherit; }
+.sub-btn:hover { border-color: var(--yale-blue); background: #f7fafd; }
+details.combined { margin: 6px 0 8px; }
+details.combined summary { cursor: pointer; color: var(--yale-blue); font-weight: 600; font-size: 13.5px; }
+@media (max-width: 600px) { .sub-row { gap: 6px 10px; } .sub-btns { width: 100%; padding-left: 22px; } .sub-btn { flex: 1; text-align: center; padding: 7px 4px; } }

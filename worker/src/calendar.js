@@ -63,6 +63,7 @@ function collectItems({ program, sessions, courses }) {
     });
   });
   (program.milestones || []).forEach((m) => items.push({ id: m.id, kind: "event", course: "PROGRAM", title: m.title, date: m.date, endDate: m.endDate }));
+  (program.classWeekends || []).forEach(([a, b]) => items.push({ id: "wk-" + a, kind: "event", course: "PROGRAM", title: "EMBA class weekend", date: a, endDate: b }));
   courses.forEach((c) => (c.items || []).forEach((x) => items.push({ ...x, kind: x.type, course: c.id })));
   return { items, info };
 }
@@ -77,8 +78,14 @@ function buildIcs(data, q) {
     (!DUE.has(it.kind) || mode.has(it.mode || "unspecified")));
 
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  // A single-course feed is named after the course, so each shows up as its own calendar.
+  let calName = "EMBA C28 Planner";
+  if (courseFilter && courseFilter.size === 1) {
+    const only = [...courseFilter][0];
+    calName = only === "PROGRAM" ? "EMBA class weekends & events" : only.replace("MGT", "") + " " + info(only).name + " · EMBA";
+  }
   const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//EMBA C28 Planner//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    "X-WR-CALNAME:EMBA C28 Planner", "X-WR-TIMEZONE:America/New_York",
+    "X-WR-CALNAME:" + esc(calName), "X-WR-TIMEZONE:America/New_York",
     "X-WR-CALDESC:Yale SOM EMBA Class of 2028 deadlines\\, readings\\, and classes (unofficial). Confirm on Canvas.",
     "REFRESH-INTERVAL;VALUE=DURATION:PT4H", "X-PUBLISHED-TTL:PT4H", ...VTIMEZONE];
   const dt = (d, t) => d.replace(/-/g, "") + "T" + t.replace(":", "") + "00";
