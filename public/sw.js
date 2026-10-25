@@ -3,7 +3,7 @@
 // first, cached copy only when offline; cleared on sign-out. Never cached: other /api calls,
 // chat, calendar feeds.
 // Bump VERSION whenever assets change.
-const VERSION = "2026-10-25o";
+const VERSION = "2026-10-25p";
 const SHELL = [
   "./", "index.html", "manifest.webmanifest",
   "assets/styles.css", "assets/data.js", "assets/app.js", "assets/assistant.js", "assets/signin.js", "assets/teams.js",

@@ -7,6 +7,13 @@
   let joinCode = joinParam;
   try { joinCode = joinCode || sessionStorage.getItem("emba28.join"); } catch (e) { /* storage blocked */ }
 
+  // Checkmarks forwarded from the old GitHub Pages planner (#import=[...]) also survive sign-in.
+  const importMatch = location.hash.match(/^#import=(.+)$/);
+  if (importMatch) {
+    try { sessionStorage.setItem("emba28.import", decodeURIComponent(importMatch[1])); } catch (e) { /* storage blocked */ }
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+
   // Everything comes from the API for the signed-in student (see assets/data.js).
   let D;
   try {
@@ -148,13 +155,16 @@
 
   // ---------- state ----------
   const done = new Set(D.me.done);
-  const legacy = load(STORE_DONE, []);
+  let forwarded = [];
+  try { forwarded = JSON.parse(sessionStorage.getItem("emba28.import") || "[]"); } catch (e) { forwarded = []; }
+  const legacy = [...new Set(load(STORE_DONE, []).concat(Array.isArray(forwarded) ? forwarded.filter((x) => typeof x === "string") : []))];
   if (legacy.length) {
     // Checkmarks made in this browser before accounts existed: move them into the account once.
     api("POST", "/api/me/done/import", { ids: legacy }).then(() => {
       legacy.forEach((id) => done.add(id));
-      try { localStorage.removeItem(STORE_DONE); } catch (e) { /* storage blocked */ }
+      try { localStorage.removeItem(STORE_DONE); sessionStorage.removeItem("emba28.import"); } catch (e) { /* storage blocked */ }
       render();
+      if (forwarded.length) toast("Brought over " + forwarded.length + " checkmark" + (forwarded.length === 1 ? "" : "s") + " from the old planner.");
     }).catch(() => {});
   }
   let myCourses = D.me.myCourses;   // null = all courses

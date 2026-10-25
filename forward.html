@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EMBA Planner has moved</title>
+  <meta name="robots" content="noindex">
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0f1641; color: #fff; font: 16px/1.5 system-ui, -apple-system, sans-serif; text-align: center; padding: 16px; }
+    a { color: #4fa8e0; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div>
+    <h1 style="font-size:22px">The EMBA Planner has moved</h1>
+    <p>Taking you to <a id="go" href="#">the new address</a>…</p>
+  </div>
+  <script>
+    // GitHub Pages (old address) → new address. Checkmarks saved in this browser on the old site
+    // ride along in the URL fragment (never sent to any server) and are added to your account.
+    var NEW_SITE = "https://NEW-ADDRESS/";
+    var target = NEW_SITE + (location.search.indexOf("join=") >= 0 ? location.search : "");
+    try {
+      var done = JSON.parse(localStorage.getItem("emba28.done") || "[]");
+      if (done.length) target += "#import=" + encodeURIComponent(JSON.stringify(done));
+    } catch (e) { /* nothing to carry over */ }
+    document.getElementById("go").href = target;
+    location.replace(target);
+  </script>
+</body>
+</html>

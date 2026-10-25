@@ -21,8 +21,8 @@ EMAIL_FROM = "EMBA Planner <login@example.org>"
 [[d1_databases]]
 binding = "DB"
 database_name = "emba-planner"
-# Placeholder until the production database is created (after approval). Local dev ignores it.
-database_id = "00000000-0000-0000-0000-000000000000"
+# Production database (local dev uses a separate local copy).
+database_id = "991e5482-b3f2-4fa1-883a-87cd32afe527"
 migrations_dir = "migrations"
 
 # Files sent from the iPhone share sheet ("Add to EMBA Planner" shortcut), kept 7 days.
