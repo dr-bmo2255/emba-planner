@@ -164,27 +164,55 @@
 
   // ---------- filters UI ----------
   const $ = (sel) => document.querySelector(sel);
-  function sw(group, value, label, on, color) {
-    return '<label class="switch' + (on ? "" : " off") + '"' + (color ? ' style="--sw:' + color + '"' : "") + '>' +
-      '<input type="checkbox" data-group="' + group + '" value="' + esc(value) + '"' + (on ? " checked" : "") + '>' +
-      '<span class="knob"></span>' + esc(label) + "</label>";
+  // Each filter group is a dropdown of checkboxes; the button summarizes what's selected.
+  let openDD = null;
+  function ddOption(group, o) {
+    const on = prefs[group].has(o.value);
+    return '<label class="dd-opt' + (on ? "" : " off") + '">' +
+      '<input type="checkbox" data-group="' + group + '" value="' + esc(o.value) + '"' + (on ? " checked" : "") + ">" +
+      (o.color ? '<i class="dd-swatch" style="background:' + o.color + '"></i>' : "") +
+      '<span class="dd-label">' + esc(o.label) + (o.sub ? " <small>" + esc(o.sub) + "</small>" : "") + "</span>" +
+      '<button type="button" class="dd-only" data-only="' + group + '" data-value="' + esc(o.value) + '" title="Show only this">only</button></label>';
   }
-  function renderFilters() {
-    let h = '<div class="fgroup"><span class="flabel">Show</span>';
-    Object.entries(KINDS).forEach(([k, v]) => { h += sw("kinds", k, v.label, prefs.kinds.has(k)); });
-    h += '</div><div class="fgroup"><span class="flabel">Courses</span>';
-    coursesWithItems.forEach((id) => {
-      const c = courseInfo(id);
-      h += sw("courses", id, id === "PROGRAM" ? "Program" : courseNum(id) + " " + c.name, prefs.courses.has(id), c.color);
+  function dropdown(group, label, opts) {
+    const n = opts.filter((o) => prefs[group].has(o.value)).length;
+    const summary = n === opts.length ? "All" : n === 0 ? "None" : n + " of " + opts.length;
+    const dots = opts.filter((o) => o.color && prefs[group].has(o.value)).slice(0, 8)
+      .map((o) => '<i class="dd-dot" style="background:' + o.color + '"></i>').join("");
+    const open = openDD === group;
+    let menu = "", section = null;
+    opts.forEach((o) => {
+      if (o.section && o.section !== section) { section = o.section; menu += '<div class="dd-section">' + esc(section) + "</div>"; }
+      menu += ddOption(group, o);
     });
-    h += '</div><div class="fgroup"><span class="flabel">Requirement</span>' +
-      sw("req", "required", "Required", prefs.req.has("required")) + sw("req", "optional", "Optional", prefs.req.has("optional")) +
-      '<span class="flabel" style="width:auto;margin-left:10px">Work</span>' +
-      sw("mode", "individual", "Individual", prefs.mode.has("individual")) + sw("mode", "group", "Group", prefs.mode.has("group")) +
-      sw("mode", "unspecified", "Not yet specified", prefs.mode.has("unspecified")) +
-      '</div><div class="fgroup"><span class="flabel">Options</span>' +
-      sw("opt", "upcoming", "Upcoming only", prefs.upcoming) + sw("opt", "hideDone", "Hide completed", prefs.hideDone) + "</div>";
-    $("#filters").innerHTML = h;
+    return '<div class="dd' + (open ? " open" : "") + (n < opts.length ? " filtered" : "") + '" data-dd="' + group + '">' +
+      '<button type="button" class="dd-btn" aria-haspopup="true" aria-expanded="' + open + '">' +
+      '<span class="dd-name">' + esc(label) + '</span><span class="dd-sum">' + summary + "</span>" +
+      (dots ? '<span class="dd-dots">' + dots + "</span>" : "") + '<span class="dd-caret">▾</span></button>' +
+      '<div class="dd-menu"' + (open ? "" : " hidden") + '><div class="dd-quick"><button type="button" data-all="' + group + '">Select all</button>' +
+      '<button type="button" data-none="' + group + '">Clear</button></div>' + menu + "</div></div>";
+  }
+  const groupOptions = {
+    kinds: () => Object.entries(KINDS).map(([k, v]) => ({ value: k, label: v.label })),
+    courses: () => {
+      const withSyllabus = coursesWithItems.filter((id) => courseById[id]);
+      const scheduleOnly = coursesWithItems.filter((id) => !courseById[id] && id !== "PROGRAM");
+      return withSyllabus.map((id) => ({ value: id, label: courseNum(id) + " " + courseInfo(id).name, color: courseInfo(id).color, section: "Current courses" }))
+        .concat(scheduleOnly.map((id) => ({ value: id, label: courseNum(id) + " " + courseInfo(id).name, color: courseInfo(id).color, section: "Class schedule only (syllabus not loaded)" })))
+        .concat(coursesWithItems.includes("PROGRAM") ? [{ value: "PROGRAM", label: "Program events", color: courseInfo("PROGRAM").color, section: "Program" }] : []);
+    },
+    req: () => [{ value: "required", label: "Required" }, { value: "optional", label: "Optional" }],
+    mode: () => [{ value: "individual", label: "Individual" }, { value: "group", label: "Group" }, { value: "unspecified", label: "Not yet specified" }]
+  };
+  function renderFilters() {
+    $("#filters").innerHTML = '<div class="fbar">' +
+      dropdown("courses", "Courses", groupOptions.courses()) +
+      dropdown("kinds", "Show", groupOptions.kinds()) +
+      dropdown("req", "Required / optional", groupOptions.req()) +
+      dropdown("mode", "Group / individual", groupOptions.mode()) +
+      '<span class="fbar-sep"></span>' +
+      '<label class="fopt"><input type="checkbox" data-group="opt" value="upcoming"' + (prefs.upcoming ? " checked" : "") + "> Upcoming only</label>" +
+      '<label class="fopt"><input type="checkbox" data-group="opt" value="hideDone"' + (prefs.hideDone ? " checked" : "") + "> Hide completed</label></div>";
   }
   $("#filters").addEventListener("change", (e) => {
     const t = e.target;
@@ -192,6 +220,24 @@
     if (t.dataset.group === "opt") prefs[t.value] = t.checked;
     else if (t.checked) prefs[t.dataset.group].add(t.value); else prefs[t.dataset.group].delete(t.value);
     renderFilters(); render();
+  });
+  $("#filters").addEventListener("click", (e) => {
+    const t = e.target;
+    const btn = t.closest(".dd-btn");
+    if (btn) { const g = btn.parentElement.dataset.dd; openDD = openDD === g ? null : g; renderFilters(); return; }
+    const all = t.closest("[data-all]"), none = t.closest("[data-none]"), only = t.closest("[data-only]");
+    if (all) prefs[all.dataset.all] = new Set(groupOptions[all.dataset.all]().map((o) => o.value));
+    else if (none) prefs[none.dataset.none] = new Set();
+    else if (only) { e.preventDefault(); prefs[only.dataset.only] = new Set([only.dataset.value]); }
+    else return;
+    renderFilters(); render();
+  });
+  // Close an open menu on outside click or Escape.
+  document.addEventListener("click", (e) => {
+    if (openDD && !e.target.closest(".dd")) { openDD = null; renderFilters(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && openDD) { openDD = null; renderFilters(); }
   });
   $("#showAll").addEventListener("click", () => {
     prefs.kinds = new Set(defaults.kinds); prefs.req = new Set(defaults.req); prefs.mode = new Set(defaults.mode);
@@ -546,7 +592,7 @@
   document.addEventListener("click", (ev) => {
     const t = ev.target;
     if (t.matches("input[data-done]")) { setDone(t.dataset.done, t.checked); return; }
-    if (t.closest("a, label.switch, input")) return;
+    if (t.closest("a, .dd, .fopt, input")) return;
     const m = t.closest("[data-month]");
     if (m) {
       const n = Number(m.dataset.month);
