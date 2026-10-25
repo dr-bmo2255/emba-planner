@@ -27,7 +27,7 @@ export async function handleCalendar(request, env, ctx) {
 }
 
 async function loadData(site) {
-  const get = (p) => fetch(site + p, { cf: { cacheTtl: 120 } }).then((r) => {
+  const get = (p) => fetch(site + p, { cf: { cacheTtlByStatus: { "200-299": 120, "400-599": 0 } } }).then((r) => {
     if (!r.ok) throw new Error(p + " " + r.status);
     return r.json();
   });
