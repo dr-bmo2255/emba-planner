@@ -1207,7 +1207,9 @@
     }
   };
 
-  const lastUpdate = [D.program.updated, D.coursesUpdated].filter(Boolean).sort().pop();
+  // program.updated is a date ("2026-10-25"); the database's is a timestamp, so use its local calendar day.
+  const day = (s) => (s.length > 10 ? new Date(s).toLocaleDateString("en-CA") : s);
+  const lastUpdate = [D.program.updated, D.coursesUpdated].filter(Boolean).map(day).sort().pop();
   $("#updated").textContent = "Schedule data last updated " + fmtDate(lastUpdate) + ", " + lastUpdate.slice(0, 4) + ".";
   renderFilters();
   render();
