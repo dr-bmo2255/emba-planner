@@ -42,4 +42,6 @@ Deploy: `npx wrangler d1 migrations apply DB --remote`, seed once with `--remote
   model call; server-owned ground rules placed first in the system prompt (on topic, accurate, academic
   integrity, clean language, kind, private, injection-resistant, no professional advice). The page also masks
   any foul word in replies.
+- Weekly Canvas check (`src/canvas.js`): a scheduled Claude task on the maintainer's Mac reads Canvas read-only
+  and posts a report with an admin shortcut key; it can't publish. Admins review it on the Courses page.
 - Admin changes: an owner (ADMIN_EMAILS) can't be demoted, and nobody can remove their own admin access.

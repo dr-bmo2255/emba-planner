@@ -5,6 +5,7 @@
 //   /api/*             everything else requires a signed-in Yale user
 //   /api/admin/*       maintainer only (users.role = 'admin': ADMIN_EMAILS owners, plus admins they add)
 //   /v1/messages       "Ask the Planner" chat → Anthropic (signed-in users)
+//   /api/admin/canvas* weekly Canvas check report (posted by a scheduled task with an admin key)
 //   /cal/<token>/...   calendar feeds (secret per-user link; calendar apps can't sign in)
 import { HttpError, json } from "./util.js";
 import { startLogin, verifyLogin, logout, currentUser, requireAdmin } from "./auth.js";
@@ -12,6 +13,7 @@ import * as docs from "./docs.js";
 import * as me from "./me.js";
 import * as teams from "./teams.js";
 import * as users from "./users.js";
+import * as canvas from "./canvas.js";
 import { handleProxy } from "./proxy.js";
 import { handleCalendar } from "./calendar.js";
 import { extractCourse, fetchSource } from "./extract.js";
@@ -88,6 +90,9 @@ async function route(request, env, ctx, user, path) {
     if (path === "/api/admin/tokens" && M === "POST") return await docs.createToken(request, env, user);
     if (path === "/api/admin/tokens/delete" && M === "POST") return await docs.deleteToken(request, env, user);
     if (path === "/api/admin/teams" && M === "GET") return await teams.allTeams(env);
+    if (path === "/api/admin/canvas" && M === "GET") return await canvas.getCanvas(env);
+    if (path === "/api/admin/canvas/report" && M === "POST") return await canvas.putReport(request, env);
+    if (path === "/api/admin/canvas/seen" && M === "POST") return await canvas.markSeen(request, env);
     if (path === "/api/admin/users" && M === "GET") return await users.listUsers(env);
     if (path === "/api/admin/users/role" && M === "POST") return await users.setRole(request, env, user);
     if (path === "/api/admin/status" && M === "GET") return json({ claude: env.ANTHROPIC_API_KEY ? "ok" : "not configured", email: env.EMAIL_MODE || "log" });
@@ -111,9 +116,9 @@ async function extract(request, env, ctx) {
     try {
       const input = { pdf: b.pdf, pdfLinks: b.pdfLinks, sourceLabel: b.sourceLabel, courseHint: b.courseHint, notes: b.notes, context: b.context };
       if (b.url) {
-        send({ type: "status", message: "Fetching the page…" });
-        const src = await fetchSource(b.url);
-        if (src.kind === "pdf") input.pdf = src.data; else input.pageText = src.text;
+        send({ type: "status", message: "Fetching the course site…" });
+        const src = await fetchSource(b.url, (n) => send({ type: "status", message: `Reading the course site… ${n} pages` }));
+        if (src.kind === "pdf") input.pdf = src.data; else { input.pages = src.pages; send({ type: "status", message: `Read ${src.pages.length} pages from the course site.` }); }
         input.sourceLabel = b.url;
       }
       send({ type: "status", message: "Claude is reading the syllabus…" });

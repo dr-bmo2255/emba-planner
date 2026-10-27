@@ -96,3 +96,4 @@ details.setup[open] summary::after { content: " ▴"; }
 .admin-tabs a[aria-current="page"] { background: var(--yale-blue); border-color: var(--yale-blue); color: #fff; }
 .admin-tabs .admin-back { margin-left: auto; border: 0; background: none; font-size: 13px; padding: 7px 4px; }
 @media (max-width: 600px) { .admin-tabs .admin-back { margin-left: 0; width: 100%; } }
+a.btn { text-decoration: none; }

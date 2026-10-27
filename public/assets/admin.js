@@ -3,7 +3,7 @@
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
 
-import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-10-27d";
+import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-10-27g";
 
 const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
 const E = await adminGate();
@@ -21,7 +21,7 @@ async function loadInbox() {
     const res = await call("admin/inbox/" + id);
     const name = decodeURIComponent(res.headers.get("x-filename") || "syllabus.pdf");
     setFile(new File([await res.blob()], name, { type: "application/pdf" }));
-    msg($("#extractMsg"), "📱 Received from your phone: " + name + ". Pick the course if you like, then tap Read with Claude.", "ok");
+    msg($("#extractMsg"), "📥 Loaded " + name + " (from your phone or the Canvas check). Pick the course if you like, then tap Read with Claude.", "ok");
     history.replaceState(null, "", location.pathname);
   } catch (e) {
     msg($("#extractMsg"), e.message, "err");
@@ -114,6 +114,46 @@ function returnedFrom() {
   if (row) { row.classList.add("flash"); row.scrollIntoView({ block: "center" }); }
   else $("#openQs").insertAdjacentHTML("afterbegin", '<p class="msg ok">✓ That item is settled and off the list.</p>');
 }
+
+// ---------------------------------------------------------------- weekly Canvas check
+async function loadCanvas() {
+  let data;
+  try { data = await (await call("admin/canvas")).json(); } catch (e) { return; }
+  const r = data.report;
+  if (!r) return;
+  const seen = new Set(data.seen);
+  const syl = r.syllabi.filter((x) => !seen.has(x.key));
+  // A date row goes away by itself once the planner item matches Canvas ("YYYY-MM-DD HH:MM").
+  const plannerWhen = (id) => { for (const c of Object.values(current)) { const it = c.items.find((i) => i.id === id); if (it) return [it.date, it.time].filter(Boolean).join(" "); } return null; };
+  const dates = r.dates.filter((x) => !seen.has(x.key) && !(x.itemId && x.canvas && plannerWhen(x.itemId) === x.canvas));
+  const fresh = r.newItems.filter((x) => !seen.has(x.key));
+  const age = Math.round((Date.now() - Date.parse(r.checkedAt)) / 864e5);
+  $("#canvasWhen").textContent = "Checked " + fmtWhen(r.checkedAt) + (age > 8 ? " · overdue, the weekly check may not be running" : "");
+  const color = (c) => (REG[c] || {}).color || "#00356b";
+  const row = (x, label, sub, btns) => `<div class="crow" style="--c:${color(x.course)}"><i class="sw"></i>
+    <div class="cname"><b>${esc(label)}</b><span>${sub}</span></div>${btns}</div>`;
+  const dismiss = (x) => `<button class="btn btn-ghost btn-sm" data-seen="${esc(x.key)}">Dismiss</button>`;
+  const canvasLink = (x) => x.canvasUrl ? ` · <a href="${esc(x.canvasUrl)}" target="_blank" rel="noopener">in Canvas</a>` : "";
+  let h = "";
+  if (syl.length) h += "<h3>Syllabi to read</h3>" + syl.map((x) => row(x, (x.course || "") + " · " + x.title,
+    esc(x.status === "changed" ? "Changed since it was last read" : "New") + canvasLink(x) + (x.note ? " · " + esc(x.note) : ""),
+    (x.inboxId ? `<a class="btn btn-sm" href="admin.html?inbox=${esc(x.inboxId)}" data-seen-go="${esc(x.key)}">Read with Claude</a>` : "") + dismiss(x))).join("");
+  if (dates.length) h += "<h3>Dates that differ from Canvas</h3>" + dates.map((x) => row(x, (x.course || "") + " · " + x.title,
+    `Planner: ${esc(x.planner || "TBA")} · Canvas: <b>${esc(x.canvas || "none")}</b>` + canvasLink(x),
+    (x.itemId ? `<a class="btn btn-ghost btn-sm" href="./?item=${encodeURIComponent(x.itemId)}&from=admin">Open</a>` : "") + dismiss(x))).join("");
+  if (fresh.length) h += "<h3>In Canvas, not in the planner</h3>" + fresh.map((x) => row(x, (x.course || "") + " · " + x.title,
+    "Due " + esc(x.due || "date not set") + canvasLink(x), dismiss(x))).join("");
+  if (r.notes.length) h += `<div class="warn-box">${r.notes.map((n) => esc(n)).join("<br>")}</div>`;
+  $("#canvasBody").innerHTML = h || '<p class="muted">✓ Everything in Canvas matches the planner.</p>';
+  $("#canvasCard").hidden = false;
+}
+$("#canvasCard").addEventListener("click", async (e) => {
+  const d = e.target.closest("[data-seen]"), go = e.target.closest("[data-seen-go]");
+  if (go) { e.preventDefault(); await call("admin/canvas/seen", { key: go.dataset.seenGo }).catch(() => {}); location.href = go.href; return; }
+  if (!d) return;
+  d.disabled = true;
+  try { await call("admin/canvas/seen", { key: d.dataset.seen }); loadCanvas(); } catch (err) { d.disabled = false; alert(err.message); }
+});
 
 // ---------------------------------------------------------------- history / undo
 async function loadHistory() {
@@ -328,4 +368,4 @@ $("#previewCard").addEventListener("click", async (e) => {
   }
 });
 
-loadCourses(); loadHistory(); loadTokens(); loadInbox();
+loadCourses().then(loadCanvas); loadHistory(); loadTokens(); loadInbox();
