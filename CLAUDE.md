@@ -13,10 +13,10 @@ Run locally (codes show on screen; `.dev.vars` makes test.admin@yale.edu the adm
   extraction), `proxy.js` (chat on Haiku 5.5 via CHAT_MODEL; only the browser-side `save_note` tool may pass), `guard.js` (chat safety harness: off switch, rate limits, size caps, foul-language blocklist, server-owned ground rules), `email.js` (Resend in production, console log locally)
 - `worker/migrations/`: D1 schema. `seed/`: the original course JSON, loaded by `tools/seed_db.py`
 - `public/`: `index.html` + `assets/app.js` (planner), `signin.js`, `teams.js` (Teams view + meeting
-  recurrence, must match calendar.js RRULE logic), `assistant.js` (chat), `admin.html` + `admin.js`
+  recurrence, must match calendar.js RRULE logic), `assistant.js` (chat), admin pages: `admin.html` + `admin.js` (courses), `admin-people.html` + `admin-people.js` (accounts, admins, teams), shared `admin-common.js`
 - Layout tiers in `assets/styles.css`: laptop >= 1024, tablet 601-1023, phone <= 600
 
 Rules:
 - Item `id`s never change once published: checkmarks are stored per student by id.
-- After changing any asset, bump `?v=` in `public/index.html`/`admin.html` and `VERSION` in `public/sw.js`.
+- After changing any asset, bump `?v=` in `public/index.html`/`admin.html`/`admin-people.html` (and the admin-common.js imports) and `VERSION` in `public/sw.js`.
 - The repo is public: never commit syllabus PDFs (`syllabi/` is git-ignored), emails, or `.dev.vars`.

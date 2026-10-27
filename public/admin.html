@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0f1641">
-  <link rel="icon" type="image/png" href="assets/icons/favicon-64.png?v=2026-10-27c">
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026-10-27c">
+  <link rel="icon" type="image/png" href="assets/icons/favicon-64.png?v=2026-10-27d">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026-10-27d">
   <title>Manage Courses · Unofficial EMBA Planner</title>
   <meta name="description" content="Maintainer page for the EMBA Planner: add, update, remove, or undo course data.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=2026-10-27c">
-  <link rel="stylesheet" href="assets/admin.css?v=2026-10-27c">
+  <link rel="stylesheet" href="assets/styles.css?v=2026-10-27d">
+  <link rel="stylesheet" href="assets/admin.css?v=2026-10-27d">
 </head>
 <body>
   <header class="masthead">
@@ -24,12 +24,17 @@
       </div>
       <div class="brand-sub">
         <span class="brand-program">Manage courses</span>
-        <span class="brand-cohort">Unofficial EMBA Planner · admins only · <a href="./" style="color:inherit">back to planner</a></span>
+        <span class="brand-cohort">Unofficial EMBA Planner · admins only</span>
       </div>
     </div>
   </header>
 
   <main class="wrap admin">
+    <nav class="admin-tabs" aria-label="Admin pages">
+      <a href="admin.html" aria-current="page">📚 Courses</a>
+      <a href="admin-people.html">👥 People &amp; teams</a>
+      <a href="./" class="admin-back">← Back to the planner</a>
+    </nav>
     <section class="card" id="lockCard">
       <h2>Manage courses</h2>
       <p id="lockMsg" class="msg">Checking your account…</p>
@@ -93,28 +98,6 @@
         <div id="courseList"></div>
       </section>
 
-      <section class="card" id="accounts">
-        <div class="card-head"><h2>Accounts</h2><span class="muted" id="userCounts"></span></div>
-        <p class="muted">Everyone who has signed in. <b>Active</b> means signed in within the last 30 days and still signed in. Admins can manage courses and see this page; make someone an admin here, no code changes needed.</p>
-        <form class="add-admin" id="addAdmin">
-          <input type="email" name="email" placeholder="classmate@yale.edu" aria-label="Email for a new admin" required>
-          <button class="btn btn-sm" type="submit">Make admin</button>
-          <span class="msg" id="addAdminMsg"></span>
-        </form>
-        <div class="ufilter" role="group" aria-label="Show accounts">
-          <label><input type="radio" name="ushow" value="all" checked> All</label>
-          <label><input type="radio" name="ushow" value="active"> Active only</label>
-          <label><input type="radio" name="ushow" value="admin"> Admins</label>
-        </div>
-        <div id="userList"></div>
-      </section>
-
-      <section class="card">
-        <h2>Teams</h2>
-        <p class="muted">Every team in the class. Teams are private to their members; as maintainer you can see names and sizes and remove a team if needed.</p>
-        <div id="teamList"></div>
-      </section>
-
       <section class="card">
         <h2>Recent changes</h2>
         <p class="muted">Every change is saved. <b>Undo</b> puts that course's data back to how it was right before the change, and shows up for everyone right away.</p>
@@ -125,7 +108,7 @@
 
   <footer class="foot">Published changes show up in the planner immediately. <span class="credit">Created by Dr. BMo · EMBA ’28</span></footer>
 
-  <script src="assets/data.js?v=2026-10-27c"></script>
-  <script type="module" src="assets/admin.js?v=2026-10-27c"></script>
+  <script src="assets/data.js?v=2026-10-27d"></script>
+  <script type="module" src="assets/admin.js?v=2026-10-27d"></script>
 </body>
 </html>

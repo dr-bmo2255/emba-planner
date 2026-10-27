@@ -89,3 +89,10 @@ details.setup[open] summary::after { content: " ▴"; }
 .ubadge.pending { background: var(--warn-bg); color: var(--warn); }
 .crow.flash { animation: flashrow 2.4s ease-out; }
 @keyframes flashrow { from { background: #fff4c2; } to { background: transparent; } }
+
+.admin-tabs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 14px; }
+.admin-tabs a { padding: 7px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; text-decoration: none; color: var(--yale-blue); background: var(--surface); border: 1px solid var(--line); }
+.admin-tabs a:hover { border-color: var(--yale-blue); }
+.admin-tabs a[aria-current="page"] { background: var(--yale-blue); border-color: var(--yale-blue); color: #fff; }
+.admin-tabs .admin-back { margin-left: auto; border: 0; background: none; font-size: 13px; padding: 7px 4px; }
+@media (max-width: 600px) { .admin-tabs .admin-back { margin-left: 0; width: 100%; } }

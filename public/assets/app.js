@@ -1132,7 +1132,7 @@
     el.innerHTML = '<button class="acct-btn" aria-haspopup="true" aria-expanded="false"><span class="acct-av">' + esc(initials) + '</span><span class="acct-name">' + esc(ME.name || ME.email) + "</span> ▾</button>" +
       '<div class="acct-menu" hidden><div class="acct-who"><b>' + esc(ME.name || "") + "</b><span>" + esc(ME.email) + "</span></div>" +
       '<button data-acct="courses">📚 My courses…</button><button data-acct="teams">👥 Teams</button><button data-acct="cal">📅 Add to calendar</button>' +
-      (ME.role === "admin" ? '<a href="admin.html">🛠 Manage courses</a>' : "") +
+      (ME.role === "admin" ? '<a href="admin.html">🛠 Manage courses</a><a href="admin-people.html">👥 People &amp; teams</a>' : "") +
       '<button data-acct="caltoken">🔄 Reset my calendar links</button><button data-acct="logout">↩︎ Sign out</button></div>';
     const btn = el.querySelector(".acct-btn"), menu = el.querySelector(".acct-menu");
     btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute("aria-expanded", String(!menu.hidden)); });
