@@ -90,6 +90,8 @@ async function route(request, env, ctx, user, path) {
     if (path === "/api/admin/tokens" && M === "POST") return await docs.createToken(request, env, user);
     if (path === "/api/admin/tokens/delete" && M === "POST") return await docs.deleteToken(request, env, user);
     if (path === "/api/admin/teams" && M === "GET") return await teams.allTeams(env);
+    if (path === "/api/admin/openq" && M === "GET") return await docs.getDismissed(env);
+    if (path === "/api/admin/openq" && M === "POST") return await docs.setDismissed(request, env);
     if (path === "/api/admin/canvas" && M === "GET") return await canvas.getCanvas(env);
     if (path === "/api/admin/canvas/report" && M === "POST") return await canvas.putReport(request, env);
     if (path === "/api/admin/canvas/seen" && M === "POST") return await canvas.markSeen(request, env);

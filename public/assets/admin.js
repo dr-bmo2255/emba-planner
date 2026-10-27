@@ -3,7 +3,7 @@
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
 
-import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-10-27m";
+import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-10-27n";
 
 const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
 const E = await adminGate();
@@ -51,7 +51,7 @@ $("#tokens").addEventListener("click", async (e) => {
 // ---------------------------------------------------------------- current courses
 let current = {}; // id -> course JSON as stored in the database
 async function loadCourses() {
-  const data = await (await call("data")).json();
+  const [data] = await Promise.all([call("data").then((r) => r.json()), loadDismissed()]);
   current = Object.fromEntries(data.courses.map((c) => [c.id, c]));
   renderOpenQuestions();
   const sel = $("#courseHint");
@@ -83,6 +83,14 @@ $("#courseList").addEventListener("click", async (e) => {
 });
 
 // ---------------------------------------------------------------- open questions
+// Dismissed questions are shared by all admins. The key includes the reasons, so if a different question
+// about the same item comes up later, it shows again.
+let dismissedQs = new Set();
+let showDismissed = false;
+const qKey = (it, why) => it.id + "|" + why.join(" · ");
+async function loadDismissed() {
+  try { dismissedQs = new Set((await (await call("admin/openq")).json()).keys); } catch (e) { /* show everything */ }
+}
 function renderOpenQuestions() {
   const rows = [];
   Object.values(current).sort((a, b) => a.id.localeCompare(b.id)).forEach((c) => c.items.forEach((it) => {
@@ -92,14 +100,30 @@ function renderOpenQuestions() {
     if (due && it.points == null) why.push("no points");
     if (!it.date && it.type !== "office") why.push("no date");
     if (it.verify) why.push("⚠ " + it.verify);
-    if (why.length) rows.push({ c, it, why });
+    if (why.length) rows.push({ c, it, why, key: qKey(it, why), off: dismissedQs.has(qKey(it, why)) });
   }));
-  $("#openQs").innerHTML = rows.length ? rows.map(({ c, it, why }) => `<div class="crow" data-qid="${esc(it.id)}" style="--c:${(REG[c.id] || {}).color || "#00356b"}"><i class="sw"></i>
+  const open = rows.filter((r) => !r.off), off = rows.filter((r) => r.off);
+  const row = ({ c, it, why, key, off: isOff }) => `<div class="crow${isOff ? " q-off" : ""}" data-qid="${esc(it.id)}" style="--c:${(REG[c.id] || {}).color || "#00356b"}"><i class="sw"></i>
     <div class="cname"><b>${esc(c.code.replace(/^MGT /, "") + " · " + it.title)}</b><span>${esc(why.join(" · "))}</span></div>
-    <a class="btn btn-ghost btn-sm" href="./?item=${encodeURIComponent(it.id)}&from=admin">Open</a></div>`).join("")
-    : '<p class="muted">Nothing open. Every item has its details settled.</p>';
+    <a class="btn btn-ghost btn-sm" href="./?item=${encodeURIComponent(it.id)}&from=admin">Open</a>
+    <button class="btn btn-ghost btn-sm" data-q="${esc(key)}" data-q-off="${isOff ? "0" : "1"}">${isOff ? "Restore" : "Dismiss"}</button></div>`;
+  $("#openQs").innerHTML = (open.length ? open.map(row).join("") : '<p class="muted">Nothing open. Every item has its details settled' + (off.length ? " or dismissed" : "") + ".</p>") +
+    (off.length ? `<p class="q-toggle"><button class="linkish" id="qToggle">${showDismissed ? "Hide" : "Show"} dismissed (${off.length})</button></p>` +
+      (showDismissed ? off.map(row).join("") : "") : "");
   returnedFrom();
 }
+$("#openQs").addEventListener("click", async (e) => {
+  if (e.target.id === "qToggle") { showDismissed = !showDismissed; renderOpenQuestions(); return; }
+  const b = e.target.closest("[data-q]");
+  if (!b) return;
+  const on = b.dataset.qOff === "1";
+  b.disabled = true;
+  try {
+    await call("admin/openq", { key: b.dataset.q, dismissed: on });
+    if (on) dismissedQs.add(b.dataset.q); else dismissedQs.delete(b.dataset.q);
+    renderOpenQuestions();
+  } catch (err) { b.disabled = false; alert(err.message); }
+});
 
 // Back from editing an item in the planner (planner sends ?back=<item id>#openQsCard): scroll to the list
 // and highlight that row (or say it's settled now).

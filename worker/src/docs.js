@@ -165,3 +165,20 @@ export async function inboxGet(id, env, user) {
   if (!value) throw new HttpError(404, "That upload has expired (files are kept 7 days). Share it again.");
   return new Response(value, { headers: { "content-type": "application/pdf", "x-filename": encodeURIComponent((metadata && metadata.name) || "syllabus.pdf") } });
 }
+
+// Open questions an admin dismissed (shared by all admins). Keys are "<itemId>|<reasons>", so an item comes
+// back on its own if a different question about it appears later.
+const DISMISSED = "openq:dismissed";
+export async function getDismissed(env) {
+  return json({ keys: (await env.INBOX.get(DISMISSED, "json")) || [] });
+}
+/** { key, dismissed: true | false } */
+export async function setDismissed(request, env) {
+  const { key, dismissed } = await body(request);
+  if (!key || String(key).length > 600) throw new HttpError(400, "Missing key.");
+  let keys = (await env.INBOX.get(DISMISSED, "json")) || [];
+  keys = keys.filter((k) => k !== key);
+  if (dismissed !== false) keys.push(String(key));
+  await env.INBOX.put(DISMISSED, JSON.stringify(keys.slice(-2000)));
+  return json({ ok: true });
+}

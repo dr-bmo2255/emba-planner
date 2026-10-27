@@ -110,3 +110,7 @@ details.logbox .log-more { margin-top: 8px; }
 details.logbox details.logbox { margin: 6px 0; }
 .report-view h4 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-3); }
 .report-view ul { margin: 0; padding-left: 18px; font-size: 13px; }
+
+.crow.q-off { opacity: .55; }
+.q-toggle { margin: 10px 0 0; font-size: 13px; }
+.q-toggle .linkish { border: 0; background: none; color: var(--yale-blue); font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
