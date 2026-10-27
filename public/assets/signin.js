@@ -41,6 +41,7 @@ window.showSignIn = function (opts) {
       <label>Code<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" required></label>
       <button class="btn btn-lg" type="submit">Sign in</button>
       <p class="signin-msg err">${esc(err || "")}</p>
+      <p class="signin-junk">No email after a minute? Check your <b>Junk</b> folder. If it's there, mark it <b>Not junk</b> so the next one lands in your inbox.</p>
       <p class="signin-alt"><button type="button" class="linkish" id="siBack">Use a different email</button> · <button type="button" class="linkish" id="siResend">Send a new code</button></p></form>`);
     root.querySelector("#siBack").addEventListener("click", () => emailStep());
     root.querySelector("#siResend").addEventListener("click", async () => {

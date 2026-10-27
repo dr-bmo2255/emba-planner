@@ -477,6 +477,7 @@ body.signed-out > header, body.signed-out > main, body.signed-out > footer, body
 .signin-msg { min-height: 1em; font-size: 13.5px; margin: 10px 0 0; }
 .signin-msg.err { color: #b3261e; }
 .signin-note { color: var(--ink-2); font-size: 14px; margin: 0 0 12px; }
+.signin-junk { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 13px; line-height: 1.45; margin: 4px 0 10px; }
 .signin-dev { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 10px; font-size: 13.5px; }
 .signin-alt { text-align: center; font-size: 13px; }
 .signin-foot { margin: 18px 0 0; text-align: center; color: var(--ink-3); font-size: 12px; }
