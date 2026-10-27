@@ -251,7 +251,7 @@
     "MGT407": {
       "code": "MGT 407E",
       "name": "Statistics",
-      "color": "#4b6584",
+      "color": "#767676",
       "faculty": [
         {
           "name": "Peter K. Schott"
@@ -278,7 +278,7 @@
     "MGT409": {
       "code": "MGT 409",
       "name": "AI Foundations for Managers",
-      "color": "#6c3fc5",
+      "color": "#0076b8",
       "faculty": [
         {
           "name": "Tauhid Zaman",
@@ -290,7 +290,7 @@
     "MGT410": {
       "code": "MGT 410E",
       "name": "Competitor",
-      "color": "#c0392b",
+      "color": "#ac6211",
       "faculty": [
         {
           "name": "Kevin Williams"
@@ -300,7 +300,7 @@
     "MGT411": {
       "code": "MGT 411E",
       "name": "Customer",
-      "color": "#1f7a4d",
+      "color": "#d41e00",
       "faculty": [
         {
           "name": "K. Sudhir"
@@ -310,7 +310,7 @@
     "MGT412": {
       "code": "MGT 412E",
       "name": "Investor",
-      "color": "#b35c00",
+      "color": "#008400",
       "faculty": [
         {
           "name": "William N. Goetzmann",
@@ -359,7 +359,7 @@
       "color": "#00838f",
       "faculty": [
         {
-          "name": "Bal\u00e1zs Kov\u00e1cs",
+          "name": "Balázs Kovács",
           "title": "Professor of Organizational Behavior",
           "url": "https://som.yale.edu/faculty-research/faculty-directory/balazs-kovacs"
         },
@@ -373,7 +373,7 @@
     "MGT422": {
       "code": "MGT 422E",
       "name": "Operations Engine",
-      "color": "#d35400",
+      "color": "#4d3d4d",
       "faculty": [
         {
           "name": "Lesley Meng"
@@ -425,7 +425,7 @@
     "MGT699": {
       "code": "MGT 699E",
       "name": "Colloquium",
-      "color": "#286dc0",
+      "color": "#a31c73",
       "faculty": [
         {
           "name": "Todd Cort",
