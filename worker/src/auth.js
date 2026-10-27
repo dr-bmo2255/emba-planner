@@ -54,11 +54,15 @@ export async function verifyLogin(request, env) {
   await env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(email).run();
 
   let user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+  const admins = (env.ADMIN_EMAILS || "").toLowerCase().split(",").map((s) => s.trim());
   if (!user) {
-    const admins = (env.ADMIN_EMAILS || "").toLowerCase().split(",").map((s) => s.trim());
     await env.DB.prepare("INSERT INTO users (email, role, cal_token, created_at) VALUES (?, ?, ?, ?)")
       .bind(email, admins.includes(email) ? "admin" : "student", randomToken(24), nowIso()).run();
     user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+  } else if (user.role !== "admin" && admins.includes(email)) {
+    // Owners (ADMIN_EMAILS) are always admins, even if the role was changed in the database.
+    await env.DB.prepare("UPDATE users SET role = 'admin' WHERE id = ?").bind(user.id).run();
+    user.role = "admin";
   }
   const token = randomToken(32);
   await env.DB.prepare("INSERT INTO sessions (id, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)")

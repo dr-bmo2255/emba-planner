@@ -32,7 +32,7 @@ try {
   throw e;
 }
 if (E.me.user.role !== "admin") {
-  $("#lockMsg").innerHTML = "Only the planner's maintainer can manage courses. <a href=\"./\">Back to the planner</a>";
+  $("#lockMsg").innerHTML = "Only the planner's admins can manage courses. <a href=\"./\">Back to the planner</a>";
   throw new Error("not admin");
 }
 $("#lockCard").hidden = true;
@@ -97,7 +97,7 @@ async function loadCourses() {
       <button class="btn btn-danger btn-sm" data-remove="${id}">Remove</button></div>`;
   }).join("")}</div>` : '<p class="muted">No course data yet.</p>';
 }
-$("#refreshBtn").addEventListener("click", () => { loadCourses(); loadHistory(); loadTeams(); });
+$("#refreshBtn").addEventListener("click", () => { loadCourses(); loadHistory(); loadTeams(); loadUsers(); });
 $("#courseList").addEventListener("click", async (e) => {
   const b = e.target.closest("[data-remove]");
   if (!b) return;
@@ -123,11 +123,75 @@ function renderOpenQuestions() {
     if (it.verify) why.push("⚠ " + it.verify);
     if (why.length) rows.push({ c, it, why });
   }));
-  $("#openQs").innerHTML = rows.length ? rows.map(({ c, it, why }) => `<div class="crow" style="--c:${(REG[c.id] || {}).color || "#00356b"}"><i class="sw"></i>
+  $("#openQs").innerHTML = rows.length ? rows.map(({ c, it, why }) => `<div class="crow" data-qid="${esc(it.id)}" style="--c:${(REG[c.id] || {}).color || "#00356b"}"><i class="sw"></i>
     <div class="cname"><b>${esc(c.code.replace(/^MGT /, "") + " · " + it.title)}</b><span>${esc(why.join(" · "))}</span></div>
-    <a class="btn btn-ghost btn-sm" href="./?item=${encodeURIComponent(it.id)}" target="_blank" rel="noopener">Open</a></div>`).join("")
+    <a class="btn btn-ghost btn-sm" href="./?item=${encodeURIComponent(it.id)}&from=admin">Open</a></div>`).join("")
     : '<p class="muted">Nothing open. Every item has its details settled.</p>';
+  returnedFrom();
 }
+
+// Back from editing an item in the planner (planner sends ?back=<item id>#openQsCard): scroll to the list
+// and highlight that row (or say it's settled now).
+let backFrom = new URLSearchParams(location.search).get("back");
+function returnedFrom() {
+  if (!backFrom) return;
+  const id = backFrom;
+  backFrom = null;
+  history.replaceState(null, "", location.pathname);
+  const row = [...document.querySelectorAll("#openQs [data-qid]")].find((r) => r.dataset.qid === id);
+  $("#openQsCard").scrollIntoView({ block: "start" });
+  if (row) { row.classList.add("flash"); row.scrollIntoView({ block: "center" }); }
+  else $("#openQs").insertAdjacentHTML("afterbegin", '<p class="msg ok">✓ That item is settled and off the list.</p>');
+}
+
+// ---------------------------------------------------------------- accounts + admins
+let users = [];
+async function loadUsers() {
+  try {
+    ({ users } = await (await call("admin/users")).json());
+    renderUsers();
+  } catch (e) { $("#userList").innerHTML = `<p class="msg err">${esc(e.message)}</p>`; }
+}
+function renderUsers() {
+  const show = (document.querySelector("input[name=ushow]:checked") || {}).value || "all";
+  const signedUp = users.filter((u) => !u.pending);
+  $("#userCounts").textContent = `${signedUp.length} account${signedUp.length === 1 ? "" : "s"} · ${users.filter((u) => u.active).length} active · ${users.filter((u) => u.role === "admin").length} admin${users.filter((u) => u.role === "admin").length === 1 ? "" : "s"}`;
+  const list = users.filter((u) => show === "all" || (show === "active" ? u.active : u.role === "admin"));
+  const me = E.me.user.id;
+  $("#userList").innerHTML = list.length ? list.map((u) => {
+    const badges = (u.role === "admin" ? `<span class="ubadge admin">${u.owner ? "Owner" : "Admin"}</span>` : "") +
+      (u.active ? '<span class="ubadge active">Active</span>' : "") + (u.pending ? '<span class="ubadge pending">Hasn\'t signed in yet</span>' : "");
+    const facts = u.pending ? "Admin access waiting for their first sign-in" :
+      `joined ${fmtDate(u.created_at.slice(0, 10))} · last sign-in ${u.last_sign_in ? fmtWhen(u.last_sign_in) : "never"} · ${u.done} item${u.done === 1 ? "" : "s"} checked off`;
+    let btn = "";
+    if (u.role === "admin" && !u.owner && u.id !== me) btn = `<button class="btn btn-danger btn-sm" data-role="student" data-uid="${u.id}" data-who="${esc(u.name || u.email)}">Remove admin</button>`;
+    else if (u.role !== "admin") btn = `<button class="btn btn-ghost btn-sm" data-role="admin" data-uid="${u.id}" data-who="${esc(u.name || u.email)}">Make admin</button>`;
+    return `<div class="crow urow" style="--c:${u.role === "admin" ? "#00356b" : "#c9d3df"}"><i class="sw"></i>
+      <div class="cname"><b>${esc(u.name || u.email)}</b>${badges}<span style="display:block">${u.name ? esc(u.email) + " · " : ""}${esc(facts)}</span></div>${btn}</div>`;
+  }).join("") : '<p class="muted">No accounts match.</p>';
+}
+document.querySelectorAll("input[name=ushow]").forEach((r) => r.addEventListener("change", renderUsers));
+$("#userList").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-role]");
+  if (!b) return;
+  const making = b.dataset.role === "admin";
+  if (!confirm(making ? `Make ${b.dataset.who} an admin?\n\nThey'll be able to add, edit, and remove course data for everyone, see all accounts, and add or remove other admins.`
+    : `Remove admin access from ${b.dataset.who}? They keep their student account.`)) return;
+  b.disabled = true;
+  try { await call("admin/users/role", { userId: Number(b.dataset.uid), role: b.dataset.role }); loadUsers(); }
+  catch (err) { b.disabled = false; alert(err.message); }
+});
+$("#addAdmin").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = e.target.email.value.trim().toLowerCase();
+  if (!confirm(`Make ${email} an admin?\n\nThey'll be able to add, edit, and remove course data for everyone, see all accounts, and add or remove other admins.`)) return;
+  try {
+    const r = await (await call("admin/users/role", { email, role: "admin" })).json();
+    msg($("#addAdminMsg"), r.created ? `Done. ${email} becomes an admin the first time they sign in.` : `Done. ${email} is now an admin.`, "ok");
+    e.target.reset();
+    loadUsers();
+  } catch (err) { msg($("#addAdminMsg"), err.message, "err"); }
+});
 
 // ---------------------------------------------------------------- teams overview
 async function loadTeams() {
@@ -356,4 +420,4 @@ $("#previewCard").addEventListener("click", async (e) => {
   }
 });
 
-loadCourses(); loadHistory(); loadTeams(); loadTokens(); loadInbox();
+loadCourses(); loadHistory(); loadTeams(); loadUsers(); loadTokens(); loadInbox();

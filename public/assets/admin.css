@@ -76,3 +76,16 @@ details.setup[open] summary::after { content: " ▴"; }
 .steps { padding-left: 20px; line-height: 1.7; font-size: 14px; }
 .steps code { background: #f1f4f8; border-radius: 4px; padding: 1px 5px; font-size: 12.5px; word-break: break-all; }
 .progress[hidden], .drop-icon[hidden] { display: none; }
+
+.add-admin { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0 6px; }
+.add-admin input { flex: 1 1 240px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; min-width: 0; }
+.add-admin .msg { margin: 0; }
+.ufilter { display: flex; gap: 14px; font-size: 13px; color: var(--ink-2); margin: 6px 0 4px; }
+.ufilter label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.urow .cname b { display: inline; }
+.ubadge { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 1px; background: #f1f4f8; color: var(--ink-2); }
+.ubadge.admin { background: var(--yale-mist); color: var(--yale-navy); }
+.ubadge.active { background: #e6f4ec; color: #1d6b43; }
+.ubadge.pending { background: var(--warn-bg); color: var(--warn); }
+.crow.flash { animation: flashrow 2.4s ease-out; }
+@keyframes flashrow { from { background: #fff4c2; } to { background: transparent; } }

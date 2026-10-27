@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0f1641">
-  <link rel="icon" type="image/png" href="assets/icons/favicon-64.png?v=2026-10-27a">
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026-10-27a">
+  <link rel="icon" type="image/png" href="assets/icons/favicon-64.png?v=2026-10-27b">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026-10-27b">
   <title>Manage Courses · Unofficial EMBA Planner</title>
   <meta name="description" content="Maintainer page for the EMBA Planner: add, update, remove, or undo course data.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=2026-10-27a">
-  <link rel="stylesheet" href="assets/admin.css?v=2026-10-27a">
+  <link rel="stylesheet" href="assets/styles.css?v=2026-10-27b">
+  <link rel="stylesheet" href="assets/admin.css?v=2026-10-27b">
 </head>
 <body>
   <header class="masthead">
@@ -24,7 +24,7 @@
       </div>
       <div class="brand-sub">
         <span class="brand-program">Manage courses</span>
-        <span class="brand-cohort">Unofficial EMBA Planner · maintainer only · <a href="./" style="color:inherit">back to planner</a></span>
+        <span class="brand-cohort">Unofficial EMBA Planner · admins only · <a href="./" style="color:inherit">back to planner</a></span>
       </div>
     </div>
   </header>
@@ -82,15 +82,31 @@
         </details>
       </section>
 
-      <section class="card">
+      <section class="card" id="openQsCard">
         <h2>Open questions</h2>
-        <p class="muted">Items still waiting on a decision: group or individual not set, no point value, no date, or a ⚠ verify flag. Open one to edit it for everyone.</p>
+        <p class="muted">Items still waiting on a decision: group or individual not set, no point value, no date, or a ⚠ verify flag. Open one to edit it for everyone; saving or closing brings you back here.</p>
         <div id="openQs"></div>
       </section>
 
       <section class="card">
         <div class="card-head"><h2>Courses in the planner</h2><button class="btn btn-ghost btn-sm" id="refreshBtn">Refresh</button></div>
         <div id="courseList"></div>
+      </section>
+
+      <section class="card" id="accounts">
+        <div class="card-head"><h2>Accounts</h2><span class="muted" id="userCounts"></span></div>
+        <p class="muted">Everyone who has signed in. <b>Active</b> means signed in within the last 30 days and still signed in. Admins can manage courses and see this page; make someone an admin here, no code changes needed.</p>
+        <form class="add-admin" id="addAdmin">
+          <input type="email" name="email" placeholder="classmate@yale.edu" aria-label="Email for a new admin" required>
+          <button class="btn btn-sm" type="submit">Make admin</button>
+          <span class="msg" id="addAdminMsg"></span>
+        </form>
+        <div class="ufilter" role="group" aria-label="Show accounts">
+          <label><input type="radio" name="ushow" value="all" checked> All</label>
+          <label><input type="radio" name="ushow" value="active"> Active only</label>
+          <label><input type="radio" name="ushow" value="admin"> Admins</label>
+        </div>
+        <div id="userList"></div>
       </section>
 
       <section class="card">
@@ -109,7 +125,7 @@
 
   <footer class="foot">Published changes show up in the planner immediately. <span class="credit">Created by Dr. BMo · EMBA ’28</span></footer>
 
-  <script src="assets/data.js?v=2026-10-27a"></script>
-  <script type="module" src="assets/admin.js?v=2026-10-27a"></script>
+  <script src="assets/data.js?v=2026-10-27b"></script>
+  <script type="module" src="assets/admin.js?v=2026-10-27b"></script>
 </body>
 </html>

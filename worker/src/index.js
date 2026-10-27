@@ -3,7 +3,7 @@
 //
 //   /api/auth/*        sign in with an emailed code, sign out
 //   /api/*             everything else requires a signed-in Yale user
-//   /api/admin/*       maintainer only (users.role = 'admin', set via ADMIN_EMAILS)
+//   /api/admin/*       maintainer only (users.role = 'admin': ADMIN_EMAILS owners, plus admins they add)
 //   /v1/messages       "Ask the Planner" chat → Anthropic (signed-in users)
 //   /cal/<token>/...   calendar feeds (secret per-user link; calendar apps can't sign in)
 import { HttpError, json } from "./util.js";
@@ -11,6 +11,7 @@ import { startLogin, verifyLogin, logout, currentUser, requireAdmin } from "./au
 import * as docs from "./docs.js";
 import * as me from "./me.js";
 import * as teams from "./teams.js";
+import * as users from "./users.js";
 import { handleProxy } from "./proxy.js";
 import { handleCalendar } from "./calendar.js";
 import { extractCourse, fetchSource } from "./extract.js";
@@ -45,7 +46,7 @@ export default {
 async function route(request, env, ctx, user, path) {
   const M = request.method;
   let m;
-  if (path === "/v1/messages" && M === "POST") return await handleProxy(request, env, {});
+  if (path === "/v1/messages" && M === "POST") return await handleProxy(request, env, {}, user);
 
   if (path === "/api/data" && M === "GET") return await docs.getData(env);
   if (path === "/api/me" && M === "GET") return await me.me(env, user);
@@ -87,6 +88,8 @@ async function route(request, env, ctx, user, path) {
     if (path === "/api/admin/tokens" && M === "POST") return await docs.createToken(request, env, user);
     if (path === "/api/admin/tokens/delete" && M === "POST") return await docs.deleteToken(request, env, user);
     if (path === "/api/admin/teams" && M === "GET") return await teams.allTeams(env);
+    if (path === "/api/admin/users" && M === "GET") return await users.listUsers(env);
+    if (path === "/api/admin/users/role" && M === "POST") return await users.setRole(request, env, user);
     if (path === "/api/admin/status" && M === "GET") return json({ claude: env.ANTHROPIC_API_KEY ? "ok" : "not configured", email: env.EMAIL_MODE || "log" });
     if (path === "/api/admin/extract" && M === "POST") return extract(request, env, ctx);
   }

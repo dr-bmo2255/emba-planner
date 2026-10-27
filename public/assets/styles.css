@@ -100,6 +100,19 @@ button { font: inherit; color: inherit; }
 .dd-opt:hover .dd-only, .dd-only:focus-visible { visibility: visible; }
 .fopt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); cursor: pointer; user-select: none; }
 .fopt input { width: 16px; height: 16px; margin: 0; accent-color: var(--yale-blue); }
+/* Collapse: the filters and the toolbar buttons fold into one thin bar. */
+.fbar-collapse { margin-left: auto; border: 0; background: none; color: var(--yale-blue); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 6px 4px; }
+.fbar-collapse:hover { text-decoration: underline; }
+.fbar-thin {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 5px 12px; cursor: pointer; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 12.5px; color: var(--ink-2);
+}
+.fbar-thin:hover { border-color: var(--yale-blue); }
+.fbar-thin-label { font-weight: 700; color: var(--ink); flex: none; }
+.fbar-thin-sum { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-3); }
+.fbar-thin-caret { flex: none; color: var(--yale-blue); font-weight: 600; }
+body.compact .toolbar-actions { display: none; }
+body.compact .filters { margin-bottom: 10px; }
 @media (hover: none) { .dd-only { visibility: visible; } }
 @media (max-width: 600px) {
   .dd { position: static; }

@@ -8,7 +8,8 @@ const MODE_STORE = "emba28.chatMode";
 
 if (!window.EMBA_APP) await new Promise((r) => window.addEventListener("emba:ready", r, { once: true }));
 const A = window.EMBA_APP;
-const CFG = Object.assign({ endpoint: "", model: "claude-opus-5-5" }, (window.EMBA.program || {}).assistant);
+// The server picks the model (CHAT_MODEL, Haiku 5.5 by default) and runs the safety harness (worker/src/guard.js).
+const CFG = { model: "claude-haiku-5-5" };
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const DAY = 864e5;
 
@@ -424,7 +425,12 @@ function refTag(it) {
     `${esc(A.courseNum(it.course))} · ${esc(when)} ↗</button>`;
 }
 
+// Last layer of the safety harness: never show a foul word, even if one slips into a reply.
+const FOUL = /\b(f+[u*]+c*k+\w*|f\*+\w*|sh[i1*]t\w*|b[i1*]tch\w*|a+ss+holes?|asses?|bastards?|damn\w*|crap\w*|piss\w*|dicks?|cocks?|cunts?|sluts?|whores?|wtf|stfu|bullshit|jackass\w*|douche\w*|motherf\w*)\b/gi;
+const clean = (s) => String(s).replace(FOUL, (w) => w[0] + "•".repeat(Math.max(2, w.length - 1)));
+
 function renderMarkdown(text) {
+  text = clean(text);
   const inline = (s) => esc(s)
     .replace(/\[\[([A-Za-z0-9_.-]+)\]\]/g, (m, id) => A.itemById[id] ? refTag(A.itemById[id]) : "")
     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (m, t, u) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`)
@@ -479,7 +485,8 @@ async function askClaude(q) {
   const myNotes = Object.entries(A.notes).map(([id, n]) => `[${id}] ${n.replace(/\s+/g, " ").slice(0, 300)}`).join("\n");
   const prefix = `Today is ${A.fmtDow(today)}, ${today}. Items I've marked complete: ${[...A.done].join(", ") || "none"}.\n` +
     `My notes so far:\n${myNotes || "(none)"}\n\n`;
-  history.push({ role: "user", content: prefix + q });
+  // Context and question as separate blocks, so the server's checks look at the question only.
+  history.push({ role: "user", content: [{ type: "text", text: prefix }, { type: "text", text: q }] });
   let text = "";
   try {
     const c = await getClient();
@@ -521,6 +528,14 @@ async function askClaude(q) {
   } catch (err) {
     history.pop();
     const An = client && client.__Anthropic;
+    const guard = err && err.error && err.error.error && err.error.error.type === "guardrail" ? err.error.error : null;
+    if (guard) {
+      // The planner's safety harness declined (language, limits, length): say why, no fallback answer.
+      bubble.innerHTML = `<p>${esc(guard.message)}</p>`;
+      if (guard.reason === "hour" || guard.reason === "day" || guard.reason === "closed")
+        bubble.insertAdjacentHTML("beforeend", (await localNote(q)) || localAnswer(q));
+      return;
+    }
     let msg = "Couldn't reach Claude. Showing built-in answers instead.";
     if (An && err instanceof An.AuthenticationError) msg = "You've been signed out. Reload the page to sign in again.";
     else if (An && err instanceof An.APIError && err.status === 503) msg = "Claude isn't set up yet. Showing built-in answers instead.";

@@ -16,10 +16,14 @@ binding = "ASSETS"
 not_found_handling = "404-page"
 
 [vars]
-MODEL = "claude-opus-5-5"
-MAX_TOKENS = "16000"
+# Chat: Haiku 5.5 is plenty for looking things up in the planner ($0.10 / $0.50 per million tokens).
+# Alternatives: "claude-sonnet-5-5" ($2 / $10) or "claude-opus-5-5" ($4 / $20). CHAT_ENABLED = "0" turns the chat off.
+CHAT_MODEL = "claude-haiku-5-5"
+CHAT_MAX_TOKENS = "4096"
+CHAT_ENABLED = "1"
+# Syllabus reading (admins only, a few times a term) stays on Opus: accuracy matters more than cost there.
 EXTRACT_MODEL = "claude-opus-5-5"
-# ADMIN_EMAILS (maintainer accounts) is a secret, so the address stays out of this public repo:
+# ADMIN_EMAILS (owner accounts, always admin; owners can add more admins in Manage courses) is a secret, so the address stays out of this public repo:
 #   npx wrangler secret put ADMIN_EMAILS
 # "log" prints sign-in codes to the console (local dev); "resend" emails them (production).
 EMAIL_MODE = "resend"

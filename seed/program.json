@@ -3,7 +3,7 @@
   "updated": "2026-10-25",
   "assistant": {
     "endpoint": "",
-    "model": "claude-opus-5-5"
+    "model": "claude-haiku-5-5"
   },
   "classWeekends": [
     [

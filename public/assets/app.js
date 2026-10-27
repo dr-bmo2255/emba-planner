@@ -204,7 +204,7 @@
     save(STORE_PREFS, {
       view: prefs.view, kinds: [...prefs.kinds], req: [...prefs.req], mode: [...prefs.mode],
       courses: [...prefs.courses], range: prefs.range, hideDone: prefs.hideDone, month: prefs.month,
-      knownCourses: coursesWithItems
+      compact: prefs.compact, knownCourses: coursesWithItems
     });
   }
   function setDone(id, on) {
@@ -303,7 +303,25 @@
         (r.value === prefs.range ? " checked" : "") + '><span class="dd-label">' + esc(r.label) +
         (r.sub ? "<small>" + esc(r.sub) + "</small>" : "") + "</span></label>").join("") + "</div></div>";
   }
+  // One line saying what the collapsed bar is hiding, e.g. "5 of 7 courses · Through Nov 8 · Hide completed".
+  function filterSummary() {
+    const parts = [];
+    const n = (g) => groupOptions[g]().filter((o) => prefs[g].has(o.value)).length, tot = (g) => groupOptions[g]().length;
+    parts.push(n("courses") === tot("courses") ? "All courses" : n("courses") + " of " + tot("courses") + " courses");
+    if (n("kinds") < tot("kinds")) parts.push(n("kinds") + " of " + tot("kinds") + " types");
+    if (n("req") < tot("req")) parts.push(prefs.req.has("required") ? "Required only" : prefs.req.has("optional") ? "Optional only" : "No required/optional");
+    if (n("mode") < tot("mode")) parts.push([...prefs.mode].map((m) => m === "unspecified" ? "unspecified" : m).join(" + ") || "No group/individual");
+    parts.push((RANGES.find((r) => r.value === prefs.range) || RANGES[0]).short);
+    if (prefs.hideDone) parts.push("Hide completed");
+    return parts.join(" · ");
+  }
   function renderFilters() {
+    document.body.classList.toggle("compact", !!prefs.compact);
+    if (prefs.compact) {
+      $("#filters").innerHTML = '<button type="button" class="fbar-thin" data-compact="0" aria-expanded="false" title="Show the filters and tools">' +
+        '<span class="fbar-thin-label">Filters</span><span class="fbar-thin-sum">' + esc(filterSummary()) + '</span><span class="fbar-thin-caret">▾ Show</span></button>';
+      return;
+    }
     $("#filters").innerHTML = '<div class="fbar">' +
       dropdown("courses", "Courses", groupOptions.courses()) +
       dropdown("kinds", "Show", groupOptions.kinds()) +
@@ -311,7 +329,8 @@
       dropdown("mode", "Group / individual", groupOptions.mode()) +
       '<span class="fbar-sep"></span>' +
       rangeMenu() +
-      '<label class="fopt"><input type="checkbox" data-group="opt" value="hideDone"' + (prefs.hideDone ? " checked" : "") + "> Hide completed</label></div>";
+      '<label class="fopt"><input type="checkbox" data-group="opt" value="hideDone"' + (prefs.hideDone ? " checked" : "") + "> Hide completed</label>" +
+      '<button type="button" class="fbar-collapse" data-compact="1" aria-expanded="true" title="Fold the filters and tools into a thin bar">▴ Collapse</button></div>';
   }
   $("#filters").addEventListener("change", (e) => {
     const t = e.target;
@@ -323,6 +342,8 @@
   });
   $("#filters").addEventListener("click", (e) => {
     const t = e.target;
+    const fold = t.closest("[data-compact]");
+    if (fold) { prefs.compact = fold.dataset.compact === "1"; openDD = null; persist(); renderFilters(); return; }
     const btn = t.closest(".dd-btn");
     if (btn) { const g = btn.parentElement.dataset.dd; openDD = openDD === g ? null : g; renderFilters(); return; }
     const all = t.closest("[data-all]"), none = t.closest("[data-none]"), only = t.closest("[data-only]");
@@ -622,7 +643,7 @@
     if (ME.role !== "admin" || !courseById[it.course] || !it.type) return "";
     const k = KINDS[it.kind];
     const opt = (v, label, cur) => '<option value="' + v + '"' + (cur === v ? " selected" : "") + ">" + label + "</option>";
-    let f = '<details class="admin-edit"' + (unresolved(it) ? " open" : "") + '><summary>✏️ Edit for everyone <small>(maintainer)</small>' +
+    let f = '<details class="admin-edit"' + (unresolved(it) ? " open" : "") + '><summary>✏️ Edit for everyone <small>(admin)</small>' +
       (unresolved(it) ? ' <span class="tag unk">needs a decision</span>' : "") + "</summary>" +
       '<form class="meet-form" data-item-edit="' + esc(it.id) + '">' +
       '<label>Title<input name="title" maxlength="200" value="' + esc(it.title) + '" required></label>';
@@ -743,7 +764,12 @@
     $("#modal").hidden = false;
     $(".modal-x").focus();
   }
-  function closeModal() { const wasOpen = !$("#modal").hidden; $("#modal").hidden = true; modalCtx = null; if (wasOpen) render(); }
+  let returnTo = null; // item id when the maintainer came from the admin checklist
+  const backToAdmin = () => { location.href = "admin.html?back=" + encodeURIComponent(returnTo) + "#openQsCard"; };
+  function closeModal() {
+    if (returnTo && !$("#modal").hidden) return backToAdmin();
+    const wasOpen = !$("#modal").hidden; $("#modal").hidden = true; modalCtx = null; if (wasOpen) render();
+  }
   $("#modal").addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeModal(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#modal").hidden) closeModal(); });
 
@@ -1061,6 +1087,7 @@
           if (r.item[k] == null) { delete src[k]; delete it[k]; } else { src[k] = r.item[k]; it[k] = r.item[k]; }
         });
         indexItems();
+        if (returnTo === it.id) { toast("Saved for everyone. Back to the open questions…"); setTimeout(backToAdmin, 600); return; }
         render();
         toast("Saved for everyone. You can undo it in Manage courses.");
       } catch (x) { if (msgEl) { msgEl.textContent = x.message; msgEl.className = "form-msg err"; } }
@@ -1184,9 +1211,12 @@
   $("#updated").textContent = "Schedule data last updated " + fmtDate(lastUpdate) + ", " + lastUpdate.slice(0, 4) + ".";
   renderFilters();
   render();
-  const itemParam = new URLSearchParams(location.search).get("item");
+  const params = new URLSearchParams(location.search);
+  const itemParam = params.get("item");
   if (itemParam && itemById[itemParam]) {
     history.replaceState(null, "", location.pathname);
+    // Opened from Manage courses → Open questions: saving or closing goes back to that checklist.
+    if (params.get("from") === "admin" && ME.role === "admin") returnTo = itemParam;
     openModal({ item: itemById[itemParam] });
   }
   window.dispatchEvent(new Event("emba:ready"));
