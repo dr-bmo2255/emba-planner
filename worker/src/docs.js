@@ -1,6 +1,6 @@
 // Course data in D1. Documents: 'program', 'sessions', 'course:<ID>'. Every change is logged
 // in doc_changes (before + after) so the maintainer can undo any of them.
-import { HttpError, json, body, nowIso, sha256, randomToken, isDate, isTime } from "./util.js";
+import { HttpError, json, body, nowIso, sha256, randomToken, isDate, isTime, logEvent, who } from "./util.js";
 import { requireAdmin } from "./auth.js";
 
 export async function loadAll(env) {
@@ -136,12 +136,15 @@ export async function createToken(request, env, user) {
   const token = "emba_" + randomToken(32);
   await env.DB.prepare("INSERT INTO api_tokens (id, user_id, label, created_at) VALUES (?, ?, ?, ?)")
     .bind(await sha256(token), user.id, String(label || "iPhone shortcut").slice(0, 60), nowIso()).run();
+  await logEvent(env, "admin", user.id, `${who(user)} made a shortcut key: "${String(label || "iPhone shortcut").slice(0, 60)}"`);
   return json({ token }); // shown once; only the hash is stored
 }
 export async function deleteToken(request, env, user) {
   requireAdmin(user);
   const { ref } = await body(request);
+  const t = await env.DB.prepare("SELECT label FROM api_tokens WHERE user_id = ? AND substr(id, 1, 8) = ?").bind(user.id, String(ref)).first();
   await env.DB.prepare("DELETE FROM api_tokens WHERE user_id = ? AND substr(id, 1, 8) = ?").bind(user.id, String(ref)).run();
+  if (t) await logEvent(env, "admin", user.id, `${who(user)} deleted a shortcut key: "${t.label}"`);
   return json({ ok: true });
 }
 

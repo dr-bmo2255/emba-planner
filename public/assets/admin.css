@@ -97,3 +97,16 @@ details.setup[open] summary::after { content: " ▴"; }
 .admin-tabs .admin-back { margin-left: auto; border: 0; background: none; font-size: 13px; padding: 7px 4px; }
 @media (max-width: 600px) { .admin-tabs .admin-back { margin-left: 0; width: 100%; } }
 a.btn { text-decoration: none; }
+
+/* Collapsible logs and archives */
+details.logbox { border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; background: var(--surface); }
+details.logbox > summary { cursor: pointer; list-style: none; padding: 10px 14px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+details.logbox > summary::-webkit-details-marker { display: none; }
+details.logbox > summary::before { content: "▸"; color: var(--ink-3); width: 10px; }
+details.logbox[open] > summary::before { content: "▾"; }
+details.logbox > summary .muted { font-weight: 400; font-size: 12.5px; }
+details.logbox .log-body { padding: 0 14px 10px; }
+details.logbox .log-more { margin-top: 8px; }
+details.logbox details.logbox { margin: 6px 0; }
+.report-view h4 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-3); }
+.report-view ul { margin: 0; padding-left: 18px; font-size: 13px; }

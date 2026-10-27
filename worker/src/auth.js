@@ -1,5 +1,5 @@
 // Sign-in with a 6-digit code emailed to a @yale.edu address; 90-day HttpOnly session cookie.
-import { HttpError, json, body, nowIso, addDays, sha256, randomToken, safeEqual, cookies } from "./util.js";
+import { HttpError, json, body, nowIso, addDays, sha256, randomToken, safeEqual, cookies, logEvent } from "./util.js";
 import { sendLoginCode } from "./email.js";
 
 const SESSION_DAYS = 90;
@@ -59,10 +59,12 @@ export async function verifyLogin(request, env) {
     await env.DB.prepare("INSERT INTO users (email, role, cal_token, created_at) VALUES (?, ?, ?, ?)")
       .bind(email, admins.includes(email) ? "admin" : "student", randomToken(24), nowIso()).run();
     user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+    await logEvent(env, "user", user.id, "New account: " + email + (user.role === "admin" ? " (owner, admin)" : ""));
   } else if (user.role !== "admin" && admins.includes(email)) {
     // Owners (ADMIN_EMAILS) are always admins, even if the role was changed in the database.
     await env.DB.prepare("UPDATE users SET role = 'admin' WHERE id = ?").bind(user.id).run();
     user.role = "admin";
+    await logEvent(env, "admin", user.id, "Owner " + email + " signed in and was restored as admin");
   }
   const token = randomToken(32);
   await env.DB.prepare("INSERT INTO sessions (id, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)")

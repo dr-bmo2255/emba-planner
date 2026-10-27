@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0f1641">
-  <link rel="icon" type="image/png" href="assets/icons/favicon-64.png?v=2026-10-27g">
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026-10-27g">
+  <link rel="icon" type="image/png" href="assets/icons/favicon-64.png?v=2026-10-27k">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2026-10-27k">
   <title>Manage Courses · Unofficial EMBA Planner</title>
   <meta name="description" content="Maintainer page for the EMBA Planner: add, update, remove, or undo course data.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/styles.css?v=2026-10-27g">
-  <link rel="stylesheet" href="assets/admin.css?v=2026-10-27g">
+  <link rel="stylesheet" href="assets/styles.css?v=2026-10-27k">
+  <link rel="stylesheet" href="assets/admin.css?v=2026-10-27k">
 </head>
 <body>
   <header class="masthead">
@@ -105,16 +105,17 @@
       </section>
 
       <section class="card">
-        <h2>Recent changes</h2>
-        <p class="muted">Every change is saved. <b>Undo</b> puts that course's data back to how it was right before the change, and shows up for everyone right away.</p>
-        <div id="history"></div>
+        <h2>Logs &amp; archives</h2>
+        <details class="logbox" id="historyBox"><summary>📚 Course changes <span class="muted">every publish, edit, and removal; Undo puts a course back to just before that change</span></summary><div class="log-body" id="history"></div></details>
+        <details class="logbox" id="archiveBox"><summary>🗓️ Weekly Canvas reports <span class="muted">every weekly check, to look back on</span></summary><div class="log-body" id="archive"></div></details>
+        <p class="muted" style="margin:8px 0 0">User, admin, and team logs are on <a href="admin-people.html">People &amp; teams</a>.</p>
       </section>
     </div>
   </main>
 
   <footer class="foot">Published changes show up in the planner immediately. <span class="credit">Created by Dr. BMo · EMBA ’28</span></footer>
 
-  <script src="assets/data.js?v=2026-10-27g"></script>
-  <script type="module" src="assets/admin.js?v=2026-10-27g"></script>
+  <script src="assets/data.js?v=2026-10-27k"></script>
+  <script type="module" src="assets/admin.js?v=2026-10-27k"></script>
 </body>
 </html>

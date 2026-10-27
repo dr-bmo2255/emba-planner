@@ -1,6 +1,11 @@
 // Working teams: any student creates one and shares an invite link; members manage meetings.
 // Team data is visible only to its members (and the maintainer, who can remove a team).
-import { HttpError, json, body, nowIso, randomToken, text, optText, isDate, isTime } from "./util.js";
+import { HttpError, json, body, nowIso, randomToken, text, optText, isDate, isTime, logEvent, who } from "./util.js";
+
+// Team log lines (admin view) say what happened to a team, not which classmate joined or left: team
+// membership stays private to members. Team names and creators are already visible to admins.
+const tname = async (env, id) => ((await env.DB.prepare("SELECT name FROM teams WHERE id = ?").bind(id).first()) || {}).name || "(deleted team)";
+const size = async (env, id) => (await env.DB.prepare("SELECT COUNT(*) AS n FROM team_members WHERE team_id = ?").bind(id).first()).n;
 
 const COLORS = ["#00356b", "#1f7a4d", "#c0392b", "#6c3fc5", "#d35400", "#00838f", "#9c3d8f", "#b35c00", "#2e5e9e", "#5b6b2e"];
 
@@ -50,6 +55,7 @@ export async function createTeam(request, env, user) {
     env.DB.prepare("INSERT INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, 'owner', ?)").bind(id, user.id, nowIso())
   ]);
   const team = await env.DB.prepare("SELECT * FROM teams WHERE id = ?").bind(id).first();
+  await logEvent(env, "team", user.id, `${who(user)} created the team "${team.name}"`);
   return json({ team: await teamPayload(env, team, user, "owner") });
 }
 
@@ -57,17 +63,24 @@ export async function updateTeam(request, env, user, teamId) {
   const role = await membership(env, teamId, user);
   if (role === "member") throw new HttpError(403, "Only the team's owner can rename it.");
   const b = await body(request);
+  const before = await tname(env, teamId);
   if (b.name != null) await env.DB.prepare("UPDATE teams SET name = ? WHERE id = ?").bind(text(b.name, 60, "Team name"), teamId).run();
   if (b.color && COLORS.includes(b.color)) await env.DB.prepare("UPDATE teams SET color = ? WHERE id = ?").bind(b.color, teamId).run();
   if (b.invite === "reset") await env.DB.prepare("UPDATE teams SET invite_code = ? WHERE id = ?").bind(randomToken(12), teamId).run();
   if (b.invite === "off") await env.DB.prepare("UPDATE teams SET invite_code = NULL WHERE id = ?").bind(teamId).run();
+  const after = await tname(env, teamId);
+  const did = [after !== before ? `renamed to "${after}"` : null, b.color ? "color changed" : null,
+    b.invite === "reset" ? "invite link replaced" : null, b.invite === "off" ? "invite link turned off" : null].filter(Boolean);
+  if (did.length) await logEvent(env, "team", user.id, `Team "${before}": ${did.join(", ")}`);
   return json({ ok: true });
 }
 
 export async function deleteTeam(env, user, teamId) {
   const role = await membership(env, teamId, user);
   if (role === "member") throw new HttpError(403, "Only the team's owner (or the maintainer) can delete it.");
+  const name = await tname(env, teamId);
   await env.DB.prepare("DELETE FROM teams WHERE id = ?").bind(teamId).run();
+  await logEvent(env, "team", user.id, `Team "${name}" was deleted by ${role === "admin" ? "admin " + who(user) : "its owner"}`);
   return json({ ok: true });
 }
 
@@ -75,12 +88,14 @@ export async function removeMember(env, user, teamId, memberId) {
   const role = await membership(env, teamId, user);
   const leaving = Number(memberId) === user.id;
   if (!leaving && role === "member") throw new HttpError(403, "Only the team's owner can remove members.");
+  const name = await tname(env, teamId);
   await env.DB.prepare("DELETE FROM team_members WHERE team_id = ? AND user_id = ?").bind(teamId, Number(memberId)).run();
   // Someone was removed (not leaving on their own): replace the invite link so the old one can't be
   // used to rejoin. Current members are unaffected; an invite link that was turned off stays off.
   if (!leaving) await env.DB.prepare("UPDATE teams SET invite_code = ? WHERE id = ? AND invite_code IS NOT NULL").bind(randomToken(12), teamId).run();
   // Keep an owner: promote the longest-standing member, or delete an empty team.
   const left = await env.DB.prepare("SELECT user_id, role FROM team_members WHERE team_id = ? ORDER BY joined_at").bind(teamId).all();
+  await logEvent(env, "team", null, `Team "${name}": ${leaving ? "a member left" : "a member was removed"} · ${left.results.length} left${!leaving ? " · invite link replaced" : ""}${left.results.length ? "" : " · team deleted (empty)"}`);
   if (!left.results.length) await env.DB.prepare("DELETE FROM teams WHERE id = ?").bind(teamId).run();
   else if (!left.results.some((m) => m.role === "owner")) {
     await env.DB.prepare("UPDATE team_members SET role = 'owner' WHERE team_id = ? AND user_id = ?").bind(teamId, left.results[0].user_id).run();
@@ -103,7 +118,8 @@ export async function joinTeam(env, user, code) {
   if (!t) throw new HttpError(404, "This invite link isn't valid anymore. Ask your team for a new one.");
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM team_members WHERE team_id = ?").bind(t.id).first();
   if (n.n >= 30) throw new HttpError(400, "This team is full (30 members).");
-  await env.DB.prepare("INSERT OR IGNORE INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)").bind(t.id, user.id, nowIso()).run();
+  const r = await env.DB.prepare("INSERT OR IGNORE INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)").bind(t.id, user.id, nowIso()).run();
+  if (r.meta && r.meta.changes) await logEvent(env, "team", null, `Team "${await tname(env, t.id)}": a member joined · ${await size(env, t.id)} members`);
   return json({ ok: true, teamId: t.id });
 }
 
@@ -141,6 +157,7 @@ export async function addMeeting(request, env, user, teamId) {
   const id = randomToken(9);
   await env.DB.prepare("INSERT INTO meetings (id, team_id, title, kind, date, start_date, until_date, weekdays, every, start_time, end_time, location, notes, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(id, teamId, f.title, f.kind, f.date, f.start_date, f.until_date, f.weekdays, f.every, f.start_time, f.end_time, f.location, f.notes, user.id, nowIso(), nowIso()).run();
+  await logEvent(env, "team", null, `Team "${await tname(env, teamId)}": ${f.kind === "weekly" ? "a weekly meeting series" : "a meeting"} was added`);
   return json({ ok: true, id });
 }
 
@@ -152,16 +169,18 @@ async function meetingTeam(env, user, meetingId) {
 }
 
 export async function updateMeeting(request, env, user, meetingId) {
-  await meetingTeam(env, user, meetingId);
+  const teamId = await meetingTeam(env, user, meetingId);
   const f = meetingFields(await body(request));
   await env.DB.prepare("UPDATE meetings SET title = ?, kind = ?, date = ?, start_date = ?, until_date = ?, weekdays = ?, every = ?, start_time = ?, end_time = ?, location = ?, notes = ?, updated_at = ? WHERE id = ?")
     .bind(f.title, f.kind, f.date, f.start_date, f.until_date, f.weekdays, f.every, f.start_time, f.end_time, f.location, f.notes, nowIso(), meetingId).run();
+  await logEvent(env, "team", null, `Team "${await tname(env, teamId)}": a meeting was changed`);
   return json({ ok: true });
 }
 
 export async function deleteMeeting(env, user, meetingId) {
-  await meetingTeam(env, user, meetingId);
+  const teamId = await meetingTeam(env, user, meetingId);
   await env.DB.prepare("DELETE FROM meetings WHERE id = ?").bind(meetingId).run();
+  await logEvent(env, "team", null, `Team "${await tname(env, teamId)}": a meeting was removed`);
   return json({ ok: true });
 }
 

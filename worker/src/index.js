@@ -93,6 +93,9 @@ async function route(request, env, ctx, user, path) {
     if (path === "/api/admin/canvas" && M === "GET") return await canvas.getCanvas(env);
     if (path === "/api/admin/canvas/report" && M === "POST") return await canvas.putReport(request, env);
     if (path === "/api/admin/canvas/seen" && M === "POST") return await canvas.markSeen(request, env);
+    if (path === "/api/admin/canvas/archive" && M === "GET") return await canvas.archive(env);
+    if ((m = path.match(/^\/api\/admin\/canvas\/archive\/(\d+)$/)) && M === "GET") return await canvas.archivedReport(env, m[1]);
+    if (path === "/api/admin/log" && M === "GET") return await users.changeLog(env, new URL(request.url));
     if (path === "/api/admin/users" && M === "GET") return await users.listUsers(env);
     if (path === "/api/admin/users/role" && M === "POST") return await users.setRole(request, env, user);
     if (path === "/api/admin/status" && M === "GET") return json({ claude: env.ANTHROPIC_API_KEY ? "ok" : "not configured", email: env.EMAIL_MODE || "log" });

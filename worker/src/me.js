@@ -1,5 +1,5 @@
 // The signed-in student's own state: name, checkmarks (synced across devices), my courses, notes.
-import { HttpError, json, body, nowIso, randomToken, text } from "./util.js";
+import { HttpError, json, body, nowIso, randomToken, text, logEvent, who } from "./util.js";
 import { publicUser } from "./auth.js";
 
 const NOTE_MAX = 2000;
@@ -20,7 +20,9 @@ export async function me(env, user) {
 
 export async function setName(request, env, user) {
   const { name } = await body(request);
-  await env.DB.prepare("UPDATE users SET name = ? WHERE id = ?").bind(text(name, 60, "Name"), user.id).run();
+  const clean = text(name, 60, "Name");
+  await env.DB.prepare("UPDATE users SET name = ? WHERE id = ?").bind(clean, user.id).run();
+  if (clean !== user.name) await logEvent(env, "user", user.id, user.name ? `${user.email} changed their name from "${user.name}" to "${clean}"` : `${user.email} set their name: "${clean}"`);
   return json({ ok: true });
 }
 
@@ -67,5 +69,6 @@ export async function setMyCourses(request, env, user) {
 export async function resetCalToken(env, user) {
   const t = randomToken(24);
   await env.DB.prepare("UPDATE users SET cal_token = ? WHERE id = ?").bind(t, user.id).run();
+  await logEvent(env, "user", user.id, who(user) + " reset their calendar links");
   return json({ calToken: t });
 }

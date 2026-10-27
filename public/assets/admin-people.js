@@ -1,5 +1,5 @@
 // People & teams: admins only. Every account (who's active), who else is an admin, and every team.
-import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-10-27g";
+import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-10-27k";
 
 const E = await adminGate();
 
@@ -37,7 +37,7 @@ $("#userList").addEventListener("click", async (e) => {
   if (!confirm(making ? `Make ${b.dataset.who} an admin?\n\nThey'll be able to add, edit, and remove course data for everyone, see all accounts, and add or remove other admins.`
     : `Remove admin access from ${b.dataset.who}? They keep their student account.`)) return;
   b.disabled = true;
-  try { await call("admin/users/role", { userId: Number(b.dataset.uid), role: b.dataset.role }); loadUsers(); }
+  try { await call("admin/users/role", { userId: Number(b.dataset.uid), role: b.dataset.role }); loadUsers(); refreshLog("admin"); }
   catch (err) { b.disabled = false; alert(err.message); }
 });
 $("#addAdmin").addEventListener("submit", async (e) => {
@@ -48,7 +48,7 @@ $("#addAdmin").addEventListener("submit", async (e) => {
     const r = await (await call("admin/users/role", { email, role: "admin" })).json();
     msg($("#addAdminMsg"), r.created ? `Done. ${email} becomes an admin the first time they sign in.` : `Done. ${email} is now an admin.`, "ok");
     e.target.reset();
-    loadUsers();
+    loadUsers(); refreshLog("admin");
   } catch (err) { msg($("#addAdminMsg"), err.message, "err"); }
 });
 
@@ -63,7 +63,29 @@ $("#teamList").addEventListener("click", async (e) => {
   const b = e.target.closest("[data-team-del]");
   if (!b || !confirm(`Remove the team "${b.dataset.name}" and all its meetings for everyone? This can't be undone.`)) return;
   const res = await fetch("/api/teams/" + b.dataset.teamDel, { method: "DELETE", credentials: "same-origin" });
-  if (!res.ok) alert("Couldn't remove it."); else loadTeams();
+  if (!res.ok) alert("Couldn't remove it."); else { loadTeams(); refreshLog("team"); }
+});
+
+// ---------------------------------------------------------------- change logs (load when opened)
+async function loadLog(box, before) {
+  const bodyEl = box.querySelector(".log-body");
+  try {
+    const { entries, more } = await (await call("admin/log?kind=" + box.dataset.log + (before ? "&before=" + before : ""))).json();
+    const rows = entries.map((e) => `<div class="hrow" data-id="${e.id}"><div class="hmsg">${esc(e.message)}<span>${esc(fmtWhen(e.created_at))}${e.actor_name || e.actor_email ? " · " + esc(e.actor_name || e.actor_email) : ""}</span></div></div>`).join("");
+    if (!before) bodyEl.innerHTML = rows || '<p class="muted">Nothing logged yet.</p>';
+    else { bodyEl.querySelector(".log-more")?.remove(); bodyEl.insertAdjacentHTML("beforeend", rows); }
+    if (more) bodyEl.insertAdjacentHTML("beforeend", `<button class="btn btn-ghost btn-sm log-more" data-before="${entries[entries.length - 1].id}">Show older</button>`);
+    box.dataset.loaded = "1";
+  } catch (e) { bodyEl.innerHTML = `<p class="msg err">${esc(e.message)}</p>`; }
+}
+function refreshLog(kind) {
+  const box = document.querySelector(`.logbox[data-log="${kind}"]`);
+  delete box.dataset.loaded;
+  if (box.open) loadLog(box);
+}
+document.querySelectorAll(".logbox").forEach((box) => {
+  box.addEventListener("toggle", () => { if (box.open && !box.dataset.loaded) { box.querySelector(".log-body").innerHTML = '<p class="muted">Loading…</p>'; loadLog(box); } });
+  box.addEventListener("click", (e) => { const b = e.target.closest(".log-more"); if (b) { b.disabled = true; loadLog(box, b.dataset.before); } });
 });
 
 loadUsers(); loadTeams();

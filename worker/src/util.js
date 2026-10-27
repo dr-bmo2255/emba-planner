@@ -53,3 +53,17 @@ export function optText(v, max, field) {
 }
 export const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || "") && !isNaN(Date.parse(s + "T12:00:00Z"));
 export const isTime = (s) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s || "");
+
+/**
+ * Adds a line to an admin change log ("user", "admin", or "team"). Never fails the request it describes:
+ * a logging error is printed and ignored.
+ */
+export async function logEvent(env, kind, actorId, message) {
+  try {
+    await env.DB.prepare("INSERT INTO audit_log (kind, message, actor_id, created_at) VALUES (?, ?, ?, ?)")
+      .bind(kind, String(message).slice(0, 500), actorId || null, nowIso()).run();
+  } catch (e) { console.error("[log]", e); }
+}
+
+/** A person's display name for log lines: their name, else their email. */
+export const who = (u) => (u && (u.name || u.email)) || "someone";

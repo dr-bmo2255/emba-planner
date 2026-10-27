@@ -6,7 +6,7 @@ origin, backed by a D1 database. Sign-in is a 6-digit code emailed to a @yale.ed
 Run locally (codes show on screen; `.dev.vars` makes test.admin@yale.edu the admin):
 `cd worker && npx wrangler d1 migrations apply DB --local && python3 ../tools/seed_db.py && npx wrangler d1 execute DB --local --file seed.sql && npx wrangler dev`
 
-- `worker/src/index.js`: router. `auth.js` (codes, sessions; ADMIN_EMAILS owners are always admin), `users.js` (admin Accounts list, make/remove admins in the app), `canvas.js` (weekly Canvas check report + dismissed keys, in KV), `docs.js`
+- `worker/src/index.js`: router. `auth.js` (codes, sessions; ADMIN_EMAILS owners are always admin), `users.js` (admin Accounts list, make/remove admins in the app), `canvas.js` (weekly Canvas check: latest report + dismissed keys in KV, every report archived in `canvas_reports`), change logs: `util.logEvent` → `audit_log` (user/admin/team; team lines never name members), read via `users.changeLog`, `docs.js`
   (course data + change history/undo, admin per-item edits, iPhone inbox, shortcut keys), `me.js`
   (checkmarks, my courses, private per-item notes, calendar token), `teams.js` (teams, invites, meetings, skips), `calendar.js` (private feeds:
   `/cal/<token>/courses.ics?courses=…`, `/cal/<token>/team/<id>.ics`), `extract.js` (Claude syllabus

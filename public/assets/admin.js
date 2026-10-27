@@ -3,7 +3,7 @@
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
 
-import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-10-27g";
+import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-10-27k";
 
 const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
 const E = await adminGate();
@@ -136,7 +136,8 @@ async function loadCanvas() {
   const canvasLink = (x) => x.canvasUrl ? ` · <a href="${esc(x.canvasUrl)}" target="_blank" rel="noopener">in Canvas</a>` : "";
   let h = "";
   if (syl.length) h += "<h3>Syllabi to read</h3>" + syl.map((x) => row(x, (x.course || "") + " · " + x.title,
-    esc(x.status === "changed" ? "Changed since it was last read" : "New") + canvasLink(x) + (x.note ? " · " + esc(x.note) : ""),
+    esc(x.status === "changed" ? "Changed since it was last read" : "New") + (x.updated ? " · updated in Canvas " + esc(fmtWhen(x.updated)) : "") +
+      canvasLink(x) + (x.note ? " · " + esc(x.note) : ""),
     (x.inboxId ? `<a class="btn btn-sm" href="admin.html?inbox=${esc(x.inboxId)}" data-seen-go="${esc(x.key)}">Read with Claude</a>` : "") + dismiss(x))).join("");
   if (dates.length) h += "<h3>Dates that differ from Canvas</h3>" + dates.map((x) => row(x, (x.course || "") + " · " + x.title,
     `Planner: ${esc(x.planner || "TBA")} · Canvas: <b>${esc(x.canvas || "none")}</b>` + canvasLink(x),
@@ -154,6 +155,31 @@ $("#canvasCard").addEventListener("click", async (e) => {
   d.disabled = true;
   try { await call("admin/canvas/seen", { key: d.dataset.seen }); loadCanvas(); } catch (err) { d.disabled = false; alert(err.message); }
 });
+
+// ---------------------------------------------------------------- weekly report archive (loads when opened)
+function reportHtml(r) {
+  const li = (arr, f) => arr.length ? "<ul>" + arr.map((x) => "<li>" + f(x) + "</li>").join("") + "</ul>" : '<p class="muted">None.</p>';
+  return `<div class="report-view">
+    <h4>Syllabi (${r.syllabi.length})</h4>${li(r.syllabi, (x) => esc((x.course || "") + " · " + x.title + " · " + x.status) + (x.updated ? " · updated in Canvas " + esc(fmtWhen(x.updated)) : ""))}
+    <h4>Dates that differed (${r.dates.length})</h4>${li(r.dates, (x) => esc(`${x.course || ""} · ${x.title}: planner ${x.planner || "TBA"}, Canvas ${x.canvas || "none"}`))}
+    <h4>In Canvas, not in the planner (${r.newItems.length})</h4>${li(r.newItems, (x) => esc(`${x.course || ""} · ${x.title}` + (x.due ? " · due " + x.due : "")))}
+    ${r.notes.length ? "<h4>Notes</h4>" + li(r.notes, esc) : ""}</div>`;
+}
+async function loadArchive() {
+  try {
+    const { reports } = await (await call("admin/canvas/archive")).json();
+    $("#archive").innerHTML = reports.length ? reports.map((x) => `<details class="logbox" data-report="${x.id}"><summary>${esc(fmtWhen(x.checked_at))} <span class="muted">${esc(x.summary)}</span></summary><div class="log-body"></div></details>`).join("")
+      : '<p class="muted">No weekly reports yet. They\'re saved here from now on.</p>';
+  } catch (e) { $("#archive").innerHTML = `<p class="msg err">${esc(e.message)}</p>`; }
+}
+$("#archiveBox").addEventListener("toggle", () => { if ($("#archiveBox").open && !$("#archiveBox").dataset.loaded) { $("#archiveBox").dataset.loaded = "1"; $("#archive").innerHTML = '<p class="muted">Loading…</p>'; loadArchive(); } });
+$("#archive").addEventListener("toggle", async (e) => {
+  const d = e.target;
+  if (!d.dataset || !d.dataset.report || !d.open || d.dataset.loaded) return;
+  d.dataset.loaded = "1";
+  try { d.querySelector(".log-body").innerHTML = reportHtml((await (await call("admin/canvas/archive/" + d.dataset.report)).json()).report); }
+  catch (err) { d.querySelector(".log-body").innerHTML = `<p class="msg err">${esc(err.message)}</p>`; }
+}, true); // toggle doesn't bubble; capture it
 
 // ---------------------------------------------------------------- history / undo
 async function loadHistory() {
@@ -305,9 +331,28 @@ function diff(next, prev) {
 }
 const strip = (i) => ({ t: i.title, d: i.date, tm: i.time, p: i.points, m: i.mode, r: i.required, l: (i.links || []).map((x) => x.url) });
 
+// Re-imports sometimes give an existing item a new id. If a "new" item has the same type and title as one
+// that would be removed, keep the old id: no duplicate in the planner, and students' checkmarks stay.
+const titleKey = (i) => i.type + "|" + String(i.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function keepIds(c, prev) {
+  if (!prev) return 0;
+  const ids = new Set(c.items.map((i) => i.id));
+  const orphans = new Map();
+  prev.items.filter((i) => !ids.has(i.id)).forEach((i) => { if (!orphans.has(titleKey(i))) orphans.set(titleKey(i), i.id); });
+  const before = new Set(prev.items.map((i) => i.id));
+  let n = 0;
+  c.items.forEach((i) => {
+    if (before.has(i.id)) return;
+    const old = orphans.get(titleKey(i));
+    if (old) { i.id = old; orphans.delete(titleKey(i)); n++; }
+  });
+  return n;
+}
+
 function renderPreview() {
   const c = draft.course;
   const prev = current[c.id];
+  const kept = keepIds(c, prev);
   const r = REG[c.id] || {};
   const d = diff(c, prev);
   const counts = {};
@@ -322,6 +367,7 @@ function renderPreview() {
       <div class="muted">${prev ? "Updates the existing course" : "New course"}</div>
     </div>
     <p>${esc(draft.summary)}</p>
+    ${kept ? `<p class="muted">✓ Matched ${kept} item${kept === 1 ? "" : "s"} to ${kept === 1 ? "its" : "their"} existing planner entr${kept === 1 ? "y" : "ies"} by title, so nothing is duplicated and checkmarks stay.</p>` : ""}
     <div class="chips">${Object.entries(counts).map(([k, n]) => `<span class="chipx">${n} ${k}${n > 1 ? "s" : ""}</span>`).join("")}
       ${prev ? `<span class="chipx add">+${d.added.length} new</span><span class="chipx chg">${d.changed.length} changed</span><span class="chipx del">${d.removed.length} removed</span>` : ""}</div>
     ${c.grading && c.grading.length ? `<div class="muted"><b>Grading:</b> ${c.grading.map((g) => esc(g.weight + "% " + g.label)).join(" · ")}</div>` : ""}
