@@ -1,6 +1,13 @@
-name = "emba-planner-proxy"
+name = "emba-planner"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
+# Cloudflare account that owns y-emba.org (the Worker must live in the same account as its domain).
+account_id = "d2b58cfd9ad23b4a061d86bdfff2884b"
+
+# Serve the planner at https://y-emba.org (Cloudflare creates the DNS record and certificate).
+routes = [
+  { pattern = "y-emba.org", custom_domain = true }
+]
 
 # The site itself (public/) is served by this Worker, so pages and API share one origin.
 [assets]
@@ -12,20 +19,20 @@ not_found_handling = "404-page"
 MODEL = "claude-opus-5-5"
 MAX_TOKENS = "16000"
 EXTRACT_MODEL = "claude-opus-5-5"
-# Accounts with these emails become maintainers (manage courses, see all teams).
-ADMIN_EMAILS = ""   # set to your @yale.edu address before deploying (local testing uses .dev.vars)
+# ADMIN_EMAILS (maintainer accounts) is a secret, so the address stays out of this public repo:
+#   npx wrangler secret put ADMIN_EMAILS
 # "log" prints sign-in codes to the console (local dev); "resend" emails them (production).
-EMAIL_MODE = "log"
-EMAIL_FROM = "EMBA Planner <login@example.org>"
+EMAIL_MODE = "resend"
+EMAIL_FROM = "EMBA Planner <login@y-emba.org>"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "emba-planner"
 # Production database (local dev uses a separate local copy).
-database_id = "991e5482-b3f2-4fa1-883a-87cd32afe527"
+database_id = "0ec02fbf-7017-4b13-8136-2a2d0a5ac24b"
 migrations_dir = "migrations"
 
 # Files sent from the iPhone share sheet ("Add to EMBA Planner" shortcut), kept 7 days.
 [[kv_namespaces]]
 binding = "INBOX"
-id = "c615acaa478c44b2bff59cc2d2406ae2"
+id = "997f05b5a6fe43cab3fcb2f5d2364e6d"

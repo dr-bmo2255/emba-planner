@@ -18,8 +18,8 @@
   <script>
     // GitHub Pages (old address) → new address. Checkmarks saved in this browser on the old site
     // ride along in the URL fragment (never sent to any server) and are added to your account.
-    var NEW_SITE = "https://NEW-ADDRESS/";
-    var target = NEW_SITE + (location.search.indexOf("join=") >= 0 ? location.search : "");
+    var NEW_SITE = "https://y-emba.org/admin.html";
+    var target = NEW_SITE;
     try {
       var done = JSON.parse(localStorage.getItem("emba28.done") || "[]");
       if (done.length) target += "#import=" + encodeURIComponent(JSON.stringify(done));
