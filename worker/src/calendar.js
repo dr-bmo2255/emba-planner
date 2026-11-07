@@ -120,7 +120,7 @@ function buildIcs(data, q) {
     const only = [...courseFilter][0];
     calName = only === "PROGRAM" ? "EMBA class weekends & events (unofficial)" : only.replace("MGT", "") + " " + info(only).name + " · EMBA (unofficial)";
   }
-  const L = header(calName, "Yale SOM EMBA Class of 2028 deadlines, readings, and classes (unofficial). Confirm on Canvas.");
+  const L = header(calName, "Y SOM EMBA Class of 2028 deadlines, readings, and classes (unofficial). Confirm on Canvas.");
   const addMin = (t, m) => { const [h, mm] = t.split(":").map(Number); const x = Math.max(0, h * 60 + mm + m); return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };
   const nextDay = (d) => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10).replace(/-/g, ""); };
   const fmtT = (t) => { let [h, m] = t.split(":").map(Number); const ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12; return h + ":" + String(m).padStart(2, "0") + " " + ap; };

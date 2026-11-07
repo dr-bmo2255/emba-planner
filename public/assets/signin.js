@@ -1,4 +1,4 @@
-// Sign-in screen: Yale email → 6-digit code → (first time) your name.
+// Sign-in screen: Y email → 6-digit code → (first time) your name.
 window.showSignIn = function (opts) {
   opts = opts || {};
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -10,15 +10,15 @@ window.showSignIn = function (opts) {
 
   function card(inner) {
     root.innerHTML = `<div class="signin-card">
-      <div class="signin-brand"><span class="brand-yale">Yale</span><span class="brand-som">School of Management</span></div>
+      <div class="signin-brand"><span class="brand-yale">Y</span><span class="brand-som">School of Management</span></div>
       <h1>EMBA Planner <span class="unofficial">Unofficial</span></h1><p class="signin-sub">Class of 2028 · assignments, readings, classes, and teams</p>${inner}
-      <p class="signin-foot">Unofficial, student-built tool, not affiliated with Yale SOM. Yale accounts only.<br>Created by Dr. BMo, featuring Jessica H technology · EMBA ’28</p></div>`;
+      <p class="signin-foot">Unofficial, student-built tool, not affiliated with Y SOM. Y accounts only.<br>Created by Dr. BMo, featuring Jessica H technology · EMBA ’28</p></div>`;
     const f = root.querySelector("input");
     if (f) f.focus();
   }
 
   function emailStep(err) {
-    card(`<form id="siEmail"><label>Your Yale email
+    card(`<form id="siEmail"><label>Your Y email
       <input type="email" name="email" autocomplete="email" inputmode="email" placeholder="first.last@yale.edu" value="${esc(email)}" required></label>
       <button class="btn btn-lg" type="submit">Email me a sign-in code</button>
       <p class="signin-msg err">${esc(err || "")}</p>

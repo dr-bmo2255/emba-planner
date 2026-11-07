@@ -1,5 +1,5 @@
 // People & teams: admins only. Every account (who's active), who else is an admin, and every team.
-import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-10-27n";
+import { $, esc, fmtDate, fmtWhen, msg, call, adminGate } from "./admin-common.js?v=2026-11-07a";
 
 const E = await adminGate();
 

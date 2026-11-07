@@ -1,7 +1,7 @@
 {
   "name": "Unofficial EMBA C28 Planner",
   "short_name": "EMBA Planner",
-  "description": "Assignments, readings, and class schedule for the Yale SOM EMBA Class of 2028 (unofficial).",
+  "description": "Assignments, readings, and class schedule for the Y SOM EMBA Class of 2028 (unofficial).",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
